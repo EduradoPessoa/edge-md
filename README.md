@@ -65,6 +65,7 @@ instância única, ícone na bandeja e associação de arquivos.
 - Numeração de linhas e realce de sintaxe
 - `Enter` continua listas e citações
 - Localizar e substituir, com destaque das ocorrências
+- Inserção de link, imagem e emoji, com 376 emojis buscáveis
 - Gravação atômica: nunca deixa arquivo pela metade
 - Preserva encoding (UTF-8/UTF-16/Windows-1252) e fim de linha
 
@@ -96,6 +97,10 @@ instância única, ícone na bandeja e associação de arquivos.
 **Localizar e substituir** — com as ocorrências destacadas
 
 <img src="docs-exemplo/captura-dark-busca.png" alt="EdgeMD com a barra de busca aberta" width="820" />
+
+**Seletor de emoji** — 376 emojis, com busca em português
+
+<img src="docs-exemplo/captura-dark-emoji.png" alt="EdgeMD com o seletor de emoji aberto" width="820" />
 
 **Tema claro**
 
@@ -177,10 +182,41 @@ sua escolha é preservada.
 | `Ctrl+L` | Barra lateral | `Ctrl+Shift+E` | Exportar PDF |
 | `Ctrl+F` | Localizar (na edição) | `F3` / `Shift+F3` | Próxima / anterior |
 | `Ctrl+H` | Localizar e substituir | `Esc` | Fechar a busca |
-| Duplo clique no documento | Entrar na edição | `F5` | Redesenhar o preview |
+| `Ctrl+K` | Inserir link | `Ctrl+Shift+I` | Inserir imagem |
+| `Ctrl+.` | Inserir emoji | `F5` | Redesenhar o preview |
+| Duplo clique no documento | Entrar na edição | | |
 
 Fechar a janela (**X**) não encerra o app: ele continua na bandeja. Para sair de
 verdade, use **Arquivo → Sair** ou o menu do ícone na bandeja.
+
+## Inserir link, imagem e emoji
+
+Os três botões ficam na barra de ferramentas, junto da formatação — e só fazem
+sentido na edição.
+
+**Link** (`Ctrl+K`) abre um diálogo com texto e endereço, em vez de escrever
+`[texto](url)` e deixar a palavra "url" selecionada para você digitar por cima.
+Com uma palavra selecionada no documento, ela vem como texto do link; se houver
+um endereço no clipboard, ele vem como endereço.
+
+**Imagem** (`Ctrl+Shift+I`) abre o seletor de arquivo e cuida do caminho, que é
+a parte que costuma dar errado:
+
+| A imagem está | O que acontece |
+|---|---|
+| Na pasta do documento | Caminho relativo, nada é copiado |
+| Fora dela | Oferece copiar para `imagens/` ao lado do `.md` |
+| Documento ainda não salvo | Avisa que o caminho ficou absoluto |
+
+Copiar é o padrão porque um caminho `C:\Users\...` funciona só na máquina de
+quem escreveu. Inserir a mesma imagem duas vezes reaproveita a cópia em vez de
+encher a pasta de `foto-2.png`, `foto-3.png`.
+
+**Emoji** (`Ctrl+.`) abre um seletor ancorado no botão, com 376 emojis em sete
+categorias. A busca é em português e ignora acento — "coracao" acha ❤️, "bug"
+acha 🐞 — e apelidos no estilo do GitHub funcionam: `:tada:`, `:rocket:`,
+`:warning:`. `Enter` insere o primeiro resultado. Depois de inserir, o emoji cai
+com um espaço antes se estiver colado numa palavra.
 
 ## Localizar e substituir
 
@@ -246,6 +282,10 @@ src/edgemd/
   find_bar.py               barra de localizar e substituir
   search.py                 lógica de busca (sem interface)
   search_controller.py      liga a barra ao texto do editor
+  insert_dialogs.py         diálogos de link e de imagem
+  image_insert.py           caminho relativo e cópia da imagem
+  emojis.py                 catálogo de emojis com busca
+  emoji_picker.py           seletor de emoji em popup
   theme.py                  paleta única: gera o CSS do preview e o QSS do Qt
   icon_shapes.py            desenho dos ícones das ações, em SVG
   icons.py                  arte do produto e ícones de ação
@@ -286,6 +326,7 @@ avisar. Um tratador global transforma isso em aviso — o app continua aberto.
 | Cores, contraste, medidas | `src/edgemd/theme.py` | `python tools\generate_theme_css.py` |
 | Desenho de um ícone de ação | `src/edgemd/icon_shapes.py` | `python tools\preview_icons.py` |
 | Ícone do produto | `EdgeMD.png` (raiz) | `python tools\make_icons.py` |
+| Catálogo de emojis | `src/edgemd/emojis.py` | — |
 
 O `generate_theme_css.py` é obrigatório depois de mexer na paleta: o preview lê
 as cores de um arquivo CSS, que precisa ser regravado. Um teste falha se o

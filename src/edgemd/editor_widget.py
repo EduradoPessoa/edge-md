@@ -486,6 +486,56 @@ class MarkdownEditor(QPlainTextEdit):
             )
         self.setTextCursor(cursor)
 
+    # ------------------------------------------------------------------
+    # Inserção de mídia e emoji
+    # ------------------------------------------------------------------
+    def insert_markdown_link(self, text: str, url: str) -> None:
+        """Escreve ``[texto](url)`` no lugar do cursor.
+
+        Substitui a seleção quando há uma: quem selecionou uma palavra e abriu
+        o diálogo de link espera que ela vire o rótulo, não que continue ali.
+        """
+        self._insert_snippet(f"[{text}]({url})")
+
+    def insert_image(self, alt: str, url: str) -> None:
+        """Escreve ``![alt](url)`` no lugar do cursor."""
+        self._insert_snippet(f"![{alt}]({url})")
+
+    def insert_emoji(self, char: str) -> None:
+        """Escreve o emoji no lugar do cursor.
+
+        Se o caractere anterior for uma letra, número ou pontuação de fim de
+        frase, entra um espaço antes: colar um emoji no meio de uma palavra
+        ("texto😀") quase nunca é o que se quer, e o espaço a mais é fácil de
+        apagar.
+        """
+        cursor = self.textCursor()
+        anterior = ""
+        if cursor.position() > 0 and not cursor.hasSelection():
+            anterior = self.toPlainText()[cursor.position() - 1]
+
+        # O `anterior and` é obrigatório: em Python a string vazia é substrings
+        # de qualquer string, então `"" in ",.;:!?)]}"` é True e o emoji no
+        # início do documento ganharia um espaço à toa.
+        precisa_espaco = bool(anterior) and (
+            anterior.isalnum() or anterior in ",.;:!?)]}"
+        )
+        self._insert_snippet((" " if precisa_espaco else "") + char)
+
+    def _insert_snippet(self, texto: str) -> None:
+        """Insere um trecho no lugar da seleção ou do cursor.
+
+        A inserção passa pelo cursor do Qt, e não por ``setPlainText``: assim o
+        texto entra no histórico de desfazer, e um Ctrl+Z desfaz apenas a
+        inserção em vez de reverter o documento inteiro.
+        """
+        cursor = self.textCursor()
+        cursor.beginEditBlock()
+        cursor.insertText(texto)
+        cursor.endEditBlock()
+        self.setTextCursor(cursor)
+        self.ensureCursorVisible()
+
     def insert_line_prefix(self, prefix: str) -> None:
         """Alterna um prefixo no início da linha (título, citação, lista)."""
         cursor = self.textCursor()

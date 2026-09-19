@@ -617,6 +617,57 @@ QToolButton#findToggle:checked {{
     color: {c.fg};
 }}
 
+/* -- Seletor de emoji -------------------------------------------------- */
+QFrame#emojiPicker {{
+    background-color: {c.bg_elev};
+    border: 1px solid {c.border_strong};
+    border-radius: {c.radius_md};
+}}
+QFrame#emojiPicker QLineEdit {{
+    background-color: {c.bg_sunken};
+    border: 1px solid {c.border};
+    border-radius: {c.radius_sm};
+    padding: 5px 8px;
+}}
+QFrame#emojiPicker QLineEdit:focus {{
+    border-color: {c.accent};
+}}
+/* A grade rola; o fundo do visor acompanha a superfície do popup. */
+QFrame#emojiPicker QScrollArea, QFrame#emojiPicker QScrollArea > QWidget > QWidget {{
+    background: transparent;
+    border: 0;
+}}
+QToolButton#emojiItem {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: {c.radius_sm};
+    /* Fonte grande: emoji é glifo, e o tamanho padrão de 9 pt deixa os
+       detalhes internos ilegíveis. */
+    font-size: 18px;
+    padding: 0;
+}}
+QToolButton#emojiItem:hover {{
+    background-color: {c.hover};
+    border-color: {c.accent};
+}}
+QToolButton#emojiCategory {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: {c.radius_sm};
+    padding: 3px 7px;
+    color: {c.fg_muted};
+    font-size: 11px;
+}}
+QToolButton#emojiCategory:hover {{
+    background-color: {c.hover};
+    border-color: {c.border_strong};
+}}
+QToolButton#emojiCategory:checked {{
+    background-color: {c.accent_soft};
+    border-color: {c.accent};
+    color: {c.fg};
+}}
+
 /* -- Barra de status --------------------------------------------------- */
 QStatusBar {{
     background-color: {c.bg_elev};

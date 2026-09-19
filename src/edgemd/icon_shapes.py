@@ -1,4 +1,4 @@
-"""Desenho dos ícones das ações, em SVG.
+﻿"""Desenho dos ícones das ações, em SVG.
 
 Ficam como dados em Python, e não como arquivos ``.svg`` soltos, pelo mesmo
 motivo que o ícone do app é desenhado em ``icons.py``: a cor precisa vir do
@@ -232,6 +232,20 @@ ICONS: dict[str, str] = {
         '<path d="M21 12h-7M21 12l-2.5-2.5M21 12l-2.5 2.5"/>'
     ),
 
+    # -- Inserção de mídia ---------------------------------------------
+    "image": (
+        '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/>'
+        '<circle cx="8.6" cy="9.6" r="1.6"/>'
+        '<path d="M4 17l4.8-4.6a1.6 1.6 0 0 1 2.2 0L16 17"/>'
+        '<path d="M13.4 14.2l1.6-1.5a1.6 1.6 0 0 1 2.2 0L20 15.4"/>'
+    ),
+    "emoji": (
+        '<circle cx="12" cy="12" r="8.6"/>'
+        '<path d="M8.6 14.2a4.2 4.2 0 0 0 6.8 0"/>'
+        f'<circle cx="9.1" cy="9.6" r="1" {_DOT}/>'
+        f'<circle cx="14.9" cy="9.6" r="1" {_DOT}/>'
+    ),
+
     # -- Exibição do editor --------------------------------------------
     "line-numbers": (
         '<path d="M4 6.5h2.2M4 12h2.2M4 17.5h2.2"/>'
@@ -305,6 +319,7 @@ USED_ACTIONS: tuple[str, ...] = (
     "export-html", "export-pdf", "close", "quit",
     "undo", "redo", "cut", "copy", "paste", "select-all",
     "find", "find-next", "find-previous", "replace",
+    "image", "emoji",
     "bold", "italic", "strikethrough", "code-inline", "link",
     "code-block", "table", "h1", "h2", "h3", "quote",
     "list-bullet", "list-number", "task", "hr",

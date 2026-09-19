@@ -181,6 +181,8 @@ class Smoke:
         # SMOKE_FIND=1 abre a busca com um termo e captura, para conferir o
         # destaque das ocorrências nos dois temas.
         self.capture_find = os.environ.get("SMOKE_FIND") == "1"
+        # SMOKE_EMOJI=1 abre o seletor de emoji e captura.
+        self.capture_emoji = os.environ.get("SMOKE_EMOJI") == "1"
 
         self.shot = OUTPUT / f"preview-{self.theme}.png"
         self.shot_full = OUTPUT / f"preview-{self.theme}-completo.png"
@@ -291,6 +293,50 @@ class Smoke:
 
         QTimer.singleShot(600, self.capture_find_mode)
 
+    def open_emoji_capture(self) -> None:
+        """Abre o seletor de emoji e confere que os itens foram montados.
+
+        A grade é desenhada pelo Qt, então a captura não prova sozinha que ela
+        tem conteúdo — daí a contagem.
+        """
+        window = self.window
+        window.set_view_mode("editor")
+        window.insert_emoji()
+
+        picker = window._emoji_picker
+        if picker is None:
+            self.failures.append("o seletor de emoji não foi criado")
+            self.done()
+            return
+
+        print("\n=== seletor de emoji ===")
+        print(f"  itens na grade   : {picker.count()}")
+        print(f"  visivel          : {not picker.isHidden()}")
+        print(f"  barra com imagem : {'Imagem…' in {a.text() for a in window.toolbar.actions()}}")
+        print(f"  barra com emoji  : {'Emoji…' in {a.text() for a in window.toolbar.actions()}}")
+
+        if picker.count() < 100:
+            self.failures.append(f"grade com poucos itens: {picker.count()}")
+        if picker.isHidden():
+            self.failures.append("o seletor não ficou visível")
+
+        QTimer.singleShot(600, self.capture_emoji_mode)
+
+    def capture_emoji_mode(self) -> None:
+        """Captura a janela e o popup, que é uma janela separada."""
+        self.capture_window("-emoji")
+        picker = self.window._emoji_picker
+        if picker is not None and not picker.isHidden():
+            pixmap = picker.grab()
+            if pixmap.isNull():
+                self.failures.append("grab() do seletor retornou vazio")
+            else:
+                destino = OUTPUT / f"emoji-{self.theme}.png"
+                pixmap.save(str(destino), "PNG")
+                print(f"captura do seletor: {destino} "
+                      f"({pixmap.width()}x{pixmap.height()})")
+        self.done()
+
     def capture_find_mode(self) -> None:
         self.capture_window("-busca")
         self.done()
@@ -376,6 +422,9 @@ class Smoke:
             # edição está visível e clicável.
             self.check_reading_default()
             self.capture_window()
+            if self.capture_emoji:
+                self.open_emoji_capture()
+                return
             if self.capture_find:
                 self.open_search_capture()
                 return

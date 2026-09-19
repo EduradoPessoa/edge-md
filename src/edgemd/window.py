@@ -1,4 +1,4 @@
-"""Janela principal: abas, sidebar, preview compartilhado e menus.
+﻿"""Janela principal: abas, sidebar, preview compartilhado e menus.
 
 Sobre o preview único: cada ``QWebEngineView`` traz um compositor próprio, e um
 por aba faria a memória crescer rápido demais. Como só uma aba aparece por vez,
@@ -34,6 +34,10 @@ from PyQt6.QtGui import QTextCursor
 from edgemd import APP_NAME, __version__, icon_shapes
 from edgemd.config import DEFAULT_VIEW_MODE, AppConfig, editing_available
 from edgemd.editor_tab import FILE_FILTER, EditorTab
+from edgemd.emoji_picker import EmojiPicker
+from edgemd.image_insert import FILE_FILTER as IMAGE_FILE_FILTER
+from edgemd.image_insert import is_inside, prepare_image
+from edgemd.insert_dialogs import ImageDialog, LinkDialog
 from edgemd.export import PdfExporter, export_html
 from edgemd.icons import action_icon, app_icon, clear_action_cache, dot_badge_icon, tray_icon
 from edgemd.mode_bar import ModeBar
@@ -139,6 +143,8 @@ class MainWindow(QMainWindow):
         self._external_check_timer: QTimer | None = None
         self._pending_keep_line: int | None = None
         self._current_theme = "dark"
+        #: Seletor de emoji, criado na primeira vez que for usado.
+        self._emoji_picker: EmojiPicker | None = None
         #: Modo de exibição da sessão. Sempre começa em leitura: o app é um
         #: leitor, e abrir um .md no modo de edição contraria essa expectativa.
         self._view_mode = DEFAULT_VIEW_MODE
@@ -341,8 +347,16 @@ class MainWindow(QMainWindow):
             tip="Envolver em `código`", icon="code-inline",
         )
         self.action_link = make(
-            "Link", "Ctrl+K", self._insert_link,
+            "Link", "Ctrl+K", self.insert_link,
             tip="Inserir um link", icon="link",
+        )
+        self.action_image = make(
+            "Imagem…", "Ctrl+Shift+I", self.insert_image,
+            tip="Inserir uma imagem do disco", icon="image",
+        )
+        self.action_emoji = make(
+            "Emoji…", "Ctrl+.", self.insert_emoji,
+            tip="Escolher um emoji para inserir", icon="emoji",
         )
         self.action_code_block = make(
             "Bloco de código", "Ctrl+Shift+C", self._insert_code_block,
@@ -513,6 +527,8 @@ class MainWindow(QMainWindow):
         insert_menu.addAction(self.action_strike)
         insert_menu.addAction(self.action_code)
         insert_menu.addAction(self.action_link)
+        insert_menu.addAction(self.action_image)
+        insert_menu.addAction(self.action_emoji)
         insert_menu.addSeparator()
         insert_menu.addAction(self.action_h1)
         insert_menu.addAction(self.action_h2)
@@ -580,7 +596,7 @@ class MainWindow(QMainWindow):
             [self.action_undo, self.action_redo,
              self.action_cut, self.action_copy, self.action_paste],
             [self.action_bold, self.action_italic, self.action_strike,
-             self.action_code, self.action_link],
+             self.action_code, self.action_link, self.action_image, self.action_emoji],
             [self.action_h1, self.action_h2, self.action_h3],
             [self.action_bullet, self.action_numbered, self.action_task,
              self.action_quote],
@@ -1181,15 +1197,129 @@ class MainWindow(QMainWindow):
         if tab is not None:
             tab.editor.insert_surround(before, after, placeholder)
 
-    def _insert_link(self) -> None:
-        tab = self.current_tab
-        if tab is not None:
-            tab.editor.insert_link()
-
     def _prefix(self, prefix: str) -> None:
         tab = self.current_tab
         if tab is not None:
             tab.editor.insert_line_prefix(prefix)
+
+    # ------------------------------------------------------------------
+    # Inserção de link, imagem e emoji
+    # ------------------------------------------------------------------
+    def insert_link(self) -> None:
+        """Abre o diálogo de link, aproveitando a seleção como texto."""
+        tab = self.current_tab
+        if tab is None:
+            return
+
+        selecionado = tab.editor.textCursor().selectedText()
+        # selectedText troca quebra de linha por U+2029; num rótulo de link isso
+        # viraria um parágrafo, então descartamos seleções de várias linhas.
+        texto_inicial = selecionado.replace("\u2029", "\n").strip()
+        if "\n" in texto_inicial:
+            texto_inicial = ""
+
+        resposta = LinkDialog.ask(self, text=texto_inicial, url=self._clipboard_url())
+        if resposta is None:
+            return
+
+        texto, url = resposta
+        tab.editor.insert_markdown_link(texto, url)
+        tab.editor.setFocus()
+
+    def _clipboard_url(self) -> str:
+        """Sugere o endereço que estiver no clipboard, se parecer um.
+
+        Colar um link é o caso mais comum, e evitar um Ctrl+V a mais é o tipo de
+        detalhe que faz o diálogo valer a pena.
+        """
+        from PyQt6.QtWidgets import QApplication
+
+        texto = QApplication.clipboard().text().strip()
+        if not texto or "\n" in texto:
+            return ""
+        if texto.startswith(("http://", "https://", "mailto:", "www.")):
+            return texto
+        return ""
+
+    def insert_image(self) -> None:
+        """Escolhe uma imagem do disco e a insere no documento."""
+        tab = self.current_tab
+        if tab is None:
+            return
+
+        origem = QFileDialog.getOpenFileName(
+            self,
+            "Escolher imagem",
+            str(tab.path.parent if tab.path else self.config.last_directory),
+            IMAGE_FILE_FILTER,
+        )[0]
+        if not origem:
+            return
+
+        caminho = Path(origem)
+        # Só oferece copiar quando a imagem está fora da pasta do documento: se
+        # já está dentro, o caminho relativo funciona e copiar duplicaria o
+        # arquivo sem motivo.
+        pasta = tab.path.parent if tab.path else None
+        precisa_copiar = pasta is not None and not is_inside(caminho, pasta)
+
+        resposta = ImageDialog.ask(
+            self,
+            alt=caminho.stem,
+            can_copy=precisa_copiar,
+            source=str(caminho),
+        )
+        if resposta is None:
+            return
+
+        alt, copiar = resposta
+
+        try:
+            preparada = prepare_image(
+                caminho, tab.path, copy_external=copiar
+            )
+        except OSError as exc:
+            QMessageBox.critical(
+                self,
+                "Não foi possível inserir a imagem",
+                f"{caminho}\n\n{exc}",
+            )
+            return
+
+        tab.editor.insert_image(alt or preparada.alt, preparada.url)
+        tab.editor.setFocus()
+
+        if preparada.was_copied:
+            self._status_message.setText(f"Imagem copiada para {preparada.copied_to}")
+        elif not preparada.relative:
+            self._status_message.setText(
+                "Documento ainda não salvo: a imagem ficou com caminho absoluto."
+            )
+
+    def insert_emoji(self) -> None:
+        """Abre o seletor de emoji ancorado no botão da barra."""
+        tab = self.current_tab
+        if tab is None:
+            return
+
+        if self._emoji_picker is None:
+            self._emoji_picker = EmojiPicker(self)
+            self._emoji_picker.emojiChosen.connect(self._on_emoji_chosen)
+
+        # Ancora no botão da barra quando ele existe, para o popup nascer
+        # apontando para o lugar de onde o usuário clicou.
+        ancora = self.toolbar.widgetForAction(self.action_emoji) or self
+        self._emoji_picker.open_at(ancora)
+
+    def _on_emoji_chosen(self, char: str) -> None:
+        tab = self.current_tab
+        if tab is None:
+            return
+        if self._emoji_picker is not None:
+            self._emoji_picker.hide()
+
+        tab.editor.insert_emoji(char)
+        tab.editor.setFocus()
 
     def _insert_text(self, text: str) -> None:
         tab = self.current_tab
@@ -1506,7 +1636,8 @@ class MainWindow(QMainWindow):
             self.action_undo, self.action_redo, self.action_cut, self.action_copy,
             self.action_paste, self.action_select_all, self.action_bold,
             self.action_italic, self.action_strike, self.action_code,
-            self.action_link, self.action_h1, self.action_h2, self.action_h3,
+            self.action_link, self.action_image, self.action_emoji,
+            self.action_h1, self.action_h2, self.action_h3,
             self.action_bullet, self.action_numbered, self.action_task,
             self.action_quote, self.action_code_block, self.action_table,
             self.action_hr,
