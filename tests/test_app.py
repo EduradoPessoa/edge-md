@@ -1,12 +1,12 @@
 """Testes do bootstrap do aplicativo.
 
 Cobrem o que só se percebe olhando a interface pronta: a tradução dos diálogos
-padrão e a correta preparação da linha de comando.
+padrão e a preparação da linha de comando.
 """
 
 from __future__ import annotations
 
-import sys
+from pathlib import Path
 
 import pytest
 
@@ -45,27 +45,26 @@ class TestArgumentos:
         assert args.no_session is True
 
 
+def traducao_disponivel(idioma: str) -> bool:
+    """Se existe catálogo do Qt para o idioma."""
+    pasta = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
+    return (pasta / f"qtbase_{idioma}.qm").is_file()
+
+
 class TestTraducao:
-    @pytest.fixture(autouse=True)
-    def limpar(self):
-        yield
+    """Os botões padrão vêm do Qt, não do app.
 
-    def test_carrega_o_catalogo(self, qapp):
-        """Os botões padrão vêm do Qt, não do app.
+    Sem carregar o catálogo, um diálogo escrito em português aparece com
+    "Cancel" e "Yes" no meio. O teste fixa o idioma em vez de usar o do sistema:
+    num runner em inglês, "Cancel" é a tradução correta, e o teste não teria
+    como distinguir isso de uma falha.
+    """
 
-        Sem carregar o catálogo, um diálogo em português aparece com "Cancel" e
-        "Yes" no meio — foi o que aconteceu antes desta função existir.
-        """
-        disponivel = (
-            QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
-            and QLocale.system().name()
-        )
-        if not disponivel:
-            pytest.skip("sem catálogo de tradução no ambiente")
+    def test_traduz_para_portugues(self, qapp):
+        if not traducao_disponivel("pt_BR"):
+            pytest.skip("sem catálogo pt_BR no ambiente")
 
-        resultado = install_translations(qapp)
-        if not resultado:
-            pytest.skip("sem tradução para o idioma do sistema")
+        assert install_translations(qapp, QLocale("pt_BR")) is True
 
         botoes = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok
@@ -73,36 +72,41 @@ class TestTraducao:
         )
         try:
             textos = [b.text() for b in botoes.buttons()]
-            # Não basta "não é inglês": o teste precisa provar que traduziu.
             assert "Cancel" not in textos, textos
+            assert any("Cancelar" in t for t in textos), textos
         finally:
             botoes.deleteLater()
 
     def test_guarda_referencia_do_tradutor(self, qapp):
         """Um QTranslator destruído deixa de traduzir.
 
-        Sem a referência viva na aplicação, o objeto sairia de escopo no fim da
-        função e a tradução pararia de funcionar sem nenhum erro.
+        Sem manter a referência viva na aplicação, o objeto sairia de escopo no
+        fim da função e a tradução pararia de funcionar sem nenhum erro.
         """
-        if not install_translations(qapp):
-            pytest.skip("sem tradução para o idioma do sistema")
+        if not traducao_disponivel("pt_BR"):
+            pytest.skip("sem catálogo pt_BR no ambiente")
+
+        install_translations(qapp, QLocale("pt_BR"))
         assert getattr(qapp, "_tradutores", None)
 
     def test_nome_com_underscore(self, qapp):
         """O Qt nomeia com underscore; o uiLanguages devolve com hífen.
 
-        A primeira versão usava o nome com hífen e o load falhava em silêncio.
+        A primeira versão usava o nome com hífen e o load falhava em silêncio,
+        deixando os diálogos em inglês sem nenhum erro.
         """
-        from pathlib import Path
+        if not traducao_disponivel("pt_BR"):
+            pytest.skip("sem catálogo pt_BR no ambiente")
 
-        pasta = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
-        if not pasta.is_dir():
-            pytest.skip("sem pasta de traduções")
+        # pt_BR é exatamente o caso que expõe a diferença: o uiLanguages devolve
+        # "pt-BR", e o arquivo se chama "qtbase_pt_BR.qm".
+        assert install_translations(qapp, QLocale("pt_BR")) is True
 
-        # Se existe o arquivo para o idioma do sistema, a função precisa achá-lo.
-        idioma = QLocale.system().name()
-        esperado = pasta / f"qtbase_{idioma}.qm"
-        if not esperado.is_file():
-            pytest.skip(f"sem catálogo para {idioma}")
+    def test_idioma_sem_catalogo_nao_explode(self, qapp):
+        """Sem catálogo, o app segue com os textos padrão do Qt."""
+        resultado = install_translations(qapp, QLocale("kl_GL"))
+        assert resultado is False
 
-        assert install_translations(qapp) is True
+    def test_idioma_do_sistema_e_aceito(self, qapp):
+        resultado = install_translations(qapp)
+        assert resultado in (True, False)

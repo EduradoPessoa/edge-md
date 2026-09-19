@@ -245,8 +245,8 @@ class Application:
             self.window.quit_application()
 
 
-def install_translations(app: QApplication) -> bool:
-    """Carrega a tradução do Qt para o idioma do sistema.
+def install_translations(app: QApplication, locale: QLocale | None = None) -> bool:
+    """Carrega a tradução do Qt para o idioma pedido.
 
     Sem isto, os botões dos diálogos padrão saem em inglês — "Cancel", "Yes",
     "No" — no meio de uma interface em português, porque o texto deles vem do
@@ -257,13 +257,17 @@ def install_translations(app: QApplication) -> bool:
     criados. O PyQt6 traz os arquivos ``.qm`` junto, então não há dependência
     extra.
 
-    Devolve False quando não há tradução para o idioma — o app segue em inglês
-    nos diálogos, que é o padrão do Qt.
+    ``locale`` existe para o teste poder fixar um idioma e verificar o resultado
+    sem depender do idioma da máquina — num runner em inglês, "Cancel" é a
+    tradução correta, e o teste não teria como distinguir isso de uma falha.
+
+    Devolve False quando não há catálogo para o idioma: o app segue com os
+    textos padrão do Qt.
     """
-    from PyQt6.QtCore import QLibraryInfo, QLocale, QTranslator
+    from PyQt6.QtCore import QLibraryInfo, QLocale as _QLocale, QTranslator
 
     pasta = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
-    locale = QLocale.system()
+    locale = locale or _QLocale.system()
 
     # O Qt nomeia os catálogos com underscore ("qtbase_pt_BR.qm"), enquanto o
     # uiLanguages() devolve com hífen ("pt-BR"). Sem converter, o load falha em
