@@ -8,9 +8,21 @@
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
+# Scripts de shell exigem LF, sem exceção: o bash trata o CR como parte do
+# comando e falha com "syntax error near unexpected token". Isso já aconteceu
+# uma vez ao editar os scripts pelo Windows, e o erro só aparece na hora de
+# empacotar no Linux.
+*.sh text eol=lf
+
+# Manifestos de instalador e atalhos do freedesktop: LF também, porque são
+# lidos por ferramentas que não toleram CR.
+*.iss text eol=lf
+*.desktop text eol=lf
+
 # Binários: nunca converter, nunca tentar mostrar diff de texto.
 *.png binary
 *.ico binary
+*.icns binary
 *.jpg binary
 *.woff binary
 *.woff2 binary

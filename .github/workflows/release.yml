@@ -53,11 +53,26 @@ jobs:
       - name: Gerar o bundle
         run: python -m PyInstaller edgemd.spec --noconfirm --clean
 
+      - name: Descobrir a versão
+        id: versao
+        shell: bash
+        # A versão vem da tag quando há uma, e do pyproject.toml caso contrário.
+        # Ler ${GITHUB_REF_NAME#v} direto dava "main" numa execução manual a
+        # partir da branch, e o empacotador recusava o valor.
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSAO="${GITHUB_REF_NAME#v}"
+          else
+            VERSAO="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          fi
+          echo "valor=${VERSAO}" >> "$GITHUB_OUTPUT"
+          echo "Versão: ${VERSAO}"
+
       - name: Instalar o Inno Setup
         run: choco install innosetup --no-progress -y
 
       - name: Gerar o instalador
-        run: iscc packaging\windows\edgemd.iss
+        run: iscc /DAppVersion=${{ steps.versao.outputs.valor }} packaging\windows\edgemd.iss
 
       - uses: actions/upload-artifact@v4
         with:
@@ -104,11 +119,27 @@ jobs:
       - name: Gerar o bundle
         run: python -m PyInstaller edgemd.spec --noconfirm --clean
 
+      - name: Descobrir a versão
+        id: versao
+        shell: bash
+        # A versão vem da tag quando há uma, e do pyproject.toml caso contrário.
+        # Ler ${GITHUB_REF_NAME#v} direto devolvia "main" numa execução manual a
+        # partir da branch, e o dpkg-deb recusava o valor — foi assim que a
+        # primeira execução desta matriz falhou.
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSAO="${GITHUB_REF_NAME#v}"
+          else
+            VERSAO="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          fi
+          echo "valor=${VERSAO}" >> "$GITHUB_OUTPUT"
+          echo "Versão: ${VERSAO}"
+
       - name: Gerar o .deb e o AppImage
         run: |
           chmod +x packaging/linux/*.sh
-          packaging/linux/build_deb.sh "${GITHUB_REF_NAME#v}"
-          packaging/linux/build_appimage.sh "${GITHUB_REF_NAME#v}"
+          packaging/linux/build_deb.sh "${{ steps.versao.outputs.valor }}"
+          packaging/linux/build_appimage.sh "${{ steps.versao.outputs.valor }}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -146,10 +177,24 @@ jobs:
       - name: Gerar o bundle .app
         run: python -m PyInstaller edgemd.spec --noconfirm --clean
 
+      - name: Descobrir a versão
+        id: versao
+        shell: bash
+        # Da tag quando há uma; do pyproject.toml caso contrário. Ler o nome da
+        # ref direto devolvia "main" numa execução manual.
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSAO="${GITHUB_REF_NAME#v}"
+          else
+            VERSAO="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          fi
+          echo "valor=${VERSAO}" >> "$GITHUB_OUTPUT"
+          echo "Versão: ${VERSAO}"
+
       - name: Gerar o DMG
         run: |
           chmod +x packaging/macos/*.sh
-          packaging/macos/build_dmg.sh "${GITHUB_REF_NAME#v}"
+          packaging/macos/build_dmg.sh "${{ steps.versao.outputs.valor }}"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -20,6 +20,15 @@ set -euo pipefail
 
 VERSAO="${1:-0.1.0}"
 
+# A versao vai para dentro do pacote, e o dpkg-deb recusa valor que nao comeca
+# com digito. Sem esta checagem, passar "main" por engano dava um erro do
+# dpkg-deb sobre o campo Version, sem dizer de onde vinha o valor.
+if ! printf '%s' "$VERSAO" | grep -qE '^[0-9]'; then
+    echo "ERRO: versão inválida: '$VERSAO'" >&2
+    echo "       Precisa começar com dígito (ex.: 0.1.0)." >&2
+    exit 1
+fi
+
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ORIGEM="$RAIZ/dist/edgemd"
 DESTINO="$RAIZ/dist/linux"
