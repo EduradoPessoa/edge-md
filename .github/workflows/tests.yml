@@ -18,9 +18,12 @@ jobs:
         python-version: ["3.10", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      # Versões fixadas nas majors atuais: as anteriores rodavam em Node 20,
+      # que o GitHub já descontinuou e passou a forçar em Node 24, gerando
+      # aviso em toda execução.
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
