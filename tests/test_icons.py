@@ -21,10 +21,6 @@ from PyQt6.QtWidgets import QApplication  # noqa: E402
 from edgemd import icons  # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance() or QApplication([])
-    yield app
 
 
 @pytest.fixture(autouse=True)

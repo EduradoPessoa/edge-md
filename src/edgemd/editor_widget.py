@@ -22,6 +22,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import QPlainTextEdit, QTextEdit, QWidget
 
 from edgemd.md_highlighter import MarkdownHighlighter
+from edgemd.theme import colors as theme_colors
 
 #: Cores da moldura do editor por tema.
 #: (fundo, texto, fundo da calha, texto da calha, linha atual, seleção)
@@ -79,6 +80,11 @@ class MarkdownEditor(QPlainTextEdit):
         self._line_numbers_visible = True
         self._font_size = 14
 
+        # Estado dos destaques de busca. Ficam vazios até a barra de busca
+        # existir; o editor sozinho nao precisa saber que ela existe.
+        self._search_ranges: list[tuple[int, int]] = []
+        self._current_match = -1
+
         self._gutter = LineNumberArea(self)
         self._base_font = QFont(_pick_mono_font(), self._font_size)
         self.setFont(self._base_font)
@@ -96,7 +102,7 @@ class MarkdownEditor(QPlainTextEdit):
         self.cursorPositionChanged.connect(self._on_cursor_moved)
 
         self._update_gutter_width()
-        self._highlight_current_line()
+        self._apply_extra_selections()
 
     # ------------------------------------------------------------------
     # Aparência
@@ -118,8 +124,15 @@ class MarkdownEditor(QPlainTextEdit):
         self._gutter_bg = QColor(gutter_bg)
         self._current_line_color = QColor(current)
 
+        # As cores da busca vêm da paleta do tema, e não de constantes locais,
+        # para o destaque combinar com o resto do app nos dois temas.
+        palette = theme_colors(self._theme)
+        self._match_color = QColor(palette.match_bg)
+        self._match_current_color = QColor(palette.match_current_bg)
+        self._match_current_fg = QColor(palette.match_current_fg)
+
         self._highlighter.set_theme(self._theme)
-        self._highlight_current_line()
+        self._apply_extra_selections()
         self._gutter.update()
 
     def set_font_size(self, size: int) -> None:
@@ -128,7 +141,7 @@ class MarkdownEditor(QPlainTextEdit):
         self.setFont(self._base_font)
         self.setTabStopDistance(self.fontMetrics().horizontalAdvance(" ") * 4)
         self._update_gutter_width()
-        self._highlight_current_line()
+        self._apply_extra_selections()
 
     @property
     def font_size(self) -> int:
@@ -214,9 +227,9 @@ class MarkdownEditor(QPlainTextEdit):
             block_number += 1
 
     # ------------------------------------------------------------------
-    # Linha atual
+    # Destaques sobre o texto (linha atual e busca)
     # ------------------------------------------------------------------
-    def _highlight_current_line(self) -> None:
+    def _current_line_selection(self) -> QTextEdit.ExtraSelection:
         selection = QTextEdit.ExtraSelection()
         selection.format.setBackground(self._current_line_color)
         selection.format.setProperty(
@@ -226,10 +239,69 @@ class MarkdownEditor(QPlainTextEdit):
         )
         selection.cursor = self.textCursor()
         selection.cursor.clearSelection()
-        self.setExtraSelections([selection])
+        return selection
+
+    def _apply_extra_selections(self) -> None:
+        """Recalcula todos os destaques do editor.
+
+        A linha atual e as ocorrências da busca compartilham o mesmo mecanismo
+        do Qt (``setExtraSelections``), que substitui a lista inteira a cada
+        chamada. Manter as duas coisas em pontos diferentes do código faria uma
+        apagar a outra — a busca sumiria ao mover o cursor, ou o realce da linha
+        sumiria ao buscar. Por isso tudo passa por aqui.
+        """
+        selections = [self._current_line_selection()]
+        selections.extend(self._build_search_selections())
+        self.setExtraSelections(selections)
+
+    def _build_search_selections(self) -> list[QTextEdit.ExtraSelection]:
+        selections: list[QTextEdit.ExtraSelection] = []
+        if not self._search_ranges:
+            return selections
+
+        document = self.document()
+        limite = document.characterCount()
+        for indice, (inicio, comprimento) in enumerate(self._search_ranges):
+            # O documento pode ter encolhido entre a busca e a pintura, quando
+            # o usuário substitui ou apaga. Uma posição fora da faixa faria o
+            # Qt reclamar; simplesmente ignoramos.
+            if inicio < 0 or inicio + comprimento > limite:
+                continue
+
+            cursor = QTextCursor(document)
+            cursor.setPosition(inicio)
+            cursor.setPosition(
+                inicio + comprimento, QTextCursor.MoveMode.KeepAnchor
+            )
+
+            selection = QTextEdit.ExtraSelection()
+            selection.cursor = cursor
+            if indice == self._current_match:
+                selection.format.setBackground(self._match_current_color)
+                selection.format.setForeground(self._match_current_fg)
+            else:
+                selection.format.setBackground(self._match_color)
+            selections.append(selection)
+
+        return selections
+
+    def set_search_highlights(
+        self, ranges: list[tuple[int, int]], current: int = -1
+    ) -> None:
+        """Marca as ocorrências da busca; ``current`` é a que está em foco."""
+        self._search_ranges = list(ranges)
+        self._current_match = current
+        self._apply_extra_selections()
+
+    def clear_search_highlights(self) -> None:
+        if not self._search_ranges:
+            return
+        self._search_ranges = []
+        self._current_match = -1
+        self._apply_extra_selections()
 
     def _on_cursor_moved(self) -> None:
-        self._highlight_current_line()
+        self._apply_extra_selections()
         self._gutter.update()
         self.cursorLineChanged.emit(self.current_line())
 

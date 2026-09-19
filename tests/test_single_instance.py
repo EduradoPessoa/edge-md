@@ -19,10 +19,6 @@ from PyQt6.QtWidgets import QApplication  # noqa: E402
 from edgemd.single_instance import SingleInstance  # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance() or QApplication([])
-    yield app
 
 
 @pytest.fixture

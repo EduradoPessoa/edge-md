@@ -178,6 +178,9 @@ class Smoke:
         # SMOKE_EDIT=1 captura também o modo de edição, para conferir a faixa
         # com o botão "Concluir".
         self.capture_edit = os.environ.get("SMOKE_EDIT") == "1"
+        # SMOKE_FIND=1 abre a busca com um termo e captura, para conferir o
+        # destaque das ocorrências nos dois temas.
+        self.capture_find = os.environ.get("SMOKE_FIND") == "1"
 
         self.shot = OUTPUT / f"preview-{self.theme}.png"
         self.shot_full = OUTPUT / f"preview-{self.theme}-completo.png"
@@ -246,6 +249,51 @@ class Smoke:
         print(f"  modo após clicar em 'Concluir'   : {window._view_mode}")
         if window._view_mode != "preview":
             self.failures.append("clicar em 'Concluir' não voltou para a leitura")
+
+    def open_search_capture(self) -> None:
+        """Entra na edição, abre a busca e confere os destaques.
+
+        Além de gerar a captura, verifica que a busca realmente marcou
+        ocorrências no editor — a captura sozinha não provaria que o destaque
+        existe, já que ele é desenhado pelo Qt e não aparece no DOM.
+        """
+        window = self.window
+        window.set_view_mode("editor")
+        window.open_replace()
+
+        tab = window.current_tab
+        if tab is None:
+            self.failures.append("nenhuma aba aberta para buscar")
+            self.done()
+            return
+
+        termo = "Mermaid"
+        tab.find_bar.search_input.setText(termo)
+        tab.search._on_search_changed(termo, tab.find_bar.options)
+
+        encontradas = len(tab.search.matches)
+        destacadas = len(tab.editor._search_ranges)
+        print("\n=== busca no editor ===")
+        print(f"  termo            : {termo!r}")
+        print(f"  ocorrencias      : {encontradas}")
+        print(f"  destacadas       : {destacadas}")
+        print(f"  contador da barra: {tab.find_bar.count_label.text()!r}")
+        print(f"  barra visivel    : {tab.find_bar.isVisible()}")
+
+        if encontradas == 0:
+            self.failures.append("a busca não encontrou nenhuma ocorrência")
+        if destacadas != encontradas:
+            self.failures.append(
+                f"destacou {destacadas} de {encontradas} ocorrências"
+            )
+        if not tab.find_bar.isVisible():
+            self.failures.append("a barra de busca não ficou visível")
+
+        QTimer.singleShot(600, self.capture_find_mode)
+
+    def capture_find_mode(self) -> None:
+        self.capture_window("-busca")
+        self.done()
 
     def capture_edit_mode(self) -> None:
         self.capture_window("-edicao")
@@ -328,6 +376,9 @@ class Smoke:
             # edição está visível e clicável.
             self.check_reading_default()
             self.capture_window()
+            if self.capture_find:
+                self.open_search_capture()
+                return
             if self.capture_edit:
                 self.window.enter_edit_mode()
                 QTimer.singleShot(700, self.capture_edit_mode)

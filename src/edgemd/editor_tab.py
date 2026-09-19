@@ -24,7 +24,9 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
 
 from edgemd.editor_widget import MarkdownEditor
+from edgemd.find_bar import FindBar
 from edgemd.render import read_text_file
+from edgemd.search_controller import SearchController
 
 log = logging.getLogger(__name__)
 
@@ -77,10 +79,18 @@ class EditorTab(QWidget):
 
         self.editor = MarkdownEditor(theme=theme, parent=self)
 
+        # A barra de busca fica na própria aba, logo abaixo do texto, e começa
+        # escondida. Cada documento mantém a sua: trocar de aba não apaga o
+        # termo que se estava procurando no outro arquivo.
+        self.find_bar = FindBar(self)
+        self.find_bar.hide()
+        self.search = SearchController(self.editor, self.find_bar, parent=self)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self.editor)
+        layout.addWidget(self.editor, 1)
+        layout.addWidget(self.find_bar)
 
         self.editor.textChanged.connect(self._on_text_changed)
         self.editor.cursorLineChanged.connect(self._on_cursor_line)
@@ -121,6 +131,29 @@ class EditorTab(QWidget):
         """
         self._untitled_label = label
         self.titleChanged.emit(self.display_name)
+
+    # ------------------------------------------------------------------
+    # Busca
+    # ------------------------------------------------------------------
+    def open_search(self, *, with_replace: bool = False) -> None:
+        """Abre a barra de busca deste documento."""
+        self.search.open_bar(with_replace=with_replace)
+
+    def close_search(self) -> None:
+        """Fecha a barra, se estiver aberta."""
+        if self.is_searching:
+            self.find_bar.close_bar()
+
+    @property
+    def is_searching(self) -> bool:
+        """True quando a barra de busca está aberta.
+
+        Usa ``isHidden``, e não ``isVisible``: o segundo só é verdadeiro com
+        toda a cadeia de widgets visível, então daria falso com a janela
+        escondida na bandeja — e aí a barra não fecharia ao sair da edição
+        justamente no caso em que o usuário não está olhando.
+        """
+        return not self.find_bar.isHidden()
 
     def _on_text_changed(self) -> None:
         if not self._dirty:

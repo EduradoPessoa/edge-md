@@ -211,6 +211,27 @@ ICONS: dict[str, str] = {
         '<path d="M7.5 12l3 3 6-6.5"/>'
     ),
 
+    # -- Busca ---------------------------------------------------------
+    "find": (
+        '<circle cx="10.5" cy="10.5" r="6.5"/>'
+        '<path d="M20.5 20.5l-5-5"/>'
+    ),
+    "find-next": (
+        '<circle cx="10.5" cy="10.5" r="6.5"/>'
+        '<path d="M20.5 20.5l-5-5"/>'
+        '<path d="M8 17.5v-5M5.8 14.7L8 12.5l2.2 2.2"/>'
+    ),
+    "find-previous": (
+        '<circle cx="10.5" cy="10.5" r="6.5"/>'
+        '<path d="M20.5 20.5l-5-5"/>'
+        '<path d="M8 3.5v5M5.8 6.3L8 8.5l2.2-2.2"/>'
+    ),
+    "replace": (
+        '<path d="M3 8h9a3.5 3.5 0 0 1 0 7H6.5"/>'
+        '<path d="M9 12L6 15l3 3"/>'
+        '<path d="M21 12h-7M21 12l-2.5-2.5M21 12l-2.5 2.5"/>'
+    ),
+
     # -- Exibição do editor --------------------------------------------
     "line-numbers": (
         '<path d="M4 6.5h2.2M4 12h2.2M4 17.5h2.2"/>'
@@ -283,6 +304,7 @@ USED_ACTIONS: tuple[str, ...] = (
     "new", "open", "open-folder", "save", "save-as",
     "export-html", "export-pdf", "close", "quit",
     "undo", "redo", "cut", "copy", "paste", "select-all",
+    "find", "find-next", "find-previous", "replace",
     "bold", "italic", "strikethrough", "code-inline", "link",
     "code-block", "table", "h1", "h2", "h3", "quote",
     "list-bullet", "list-number", "task", "hr",

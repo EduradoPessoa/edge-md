@@ -71,6 +71,13 @@ class ThemeColors:
     warn: str
     danger: str
 
+    # Busca no editor: todas as ocorrências e a ocorrência atual.
+    # Âmbar, e não o azul da seleção, para não se confundir com texto
+    # selecionado — os dois aparecem ao mesmo tempo durante uma substituição.
+    match_bg: str
+    match_current_bg: str
+    match_current_fg: str
+
     # Código
     code_bg: str
     code_bar_bg: str
@@ -196,6 +203,9 @@ DARK = ThemeColors(
     ok="#52c98a",
     warn="#e0a33e",
     danger="#f2555a",
+    match_bg="#4d4426",
+    match_current_bg="#e0a33e",
+    match_current_fg="#1a1d23",
     code_bg="#101216",
     code_bar_bg="#1a1d23",
     code_fg="#d6dae3",
@@ -238,6 +248,9 @@ LIGHT = ThemeColors(
     ok="#1a7f52",
     warn="#9a6700",
     danger="#c8342f",
+    match_bg="#fdf0bf",
+    match_current_bg="#f2b134",
+    match_current_fg="#1f2328",
     code_bg="#f6f8fa",
     code_bar_bg="#eef1f4",
     code_fg="#1f2328",
@@ -553,6 +566,55 @@ QPushButton#modeBarButton:hover {{
 }}
 QPushButton#modeBarButton:pressed {{
     background-color: {c.button_bg_pressed};
+}}
+
+/* -- Barra de busca do editor ------------------------------------------ */
+QWidget#findBar {{
+    background-color: {c.bg_elev};
+    border-top: 1px solid {c.border};
+}}
+QWidget#findBar QLineEdit {{
+    background-color: {c.bg_sunken};
+    border: 1px solid {c.border};
+    border-radius: {c.radius_sm};
+    padding: 4px 8px;
+}}
+QWidget#findBar QLineEdit:focus {{
+    border-color: {c.accent};
+}}
+/* Campo sem resultado: o contorno fica vermelho, que é o aviso mais direto
+   de que a busca não encontrou nada. */
+QWidget#findBar QLineEdit[noResults="true"] {{
+    border-color: {c.danger};
+}}
+QLabel#findCount {{
+    background: transparent;
+    color: {c.fg_muted};
+    font-size: 11px;
+    min-width: 84px;
+}}
+QLabel#findError {{
+    background: transparent;
+    color: {c.danger};
+    font-size: 11px;
+}}
+QToolButton#findToggle {{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: {c.radius_sm};
+    padding: 3px 6px;
+    color: {c.fg_muted};
+    font-size: 11px;
+    font-weight: 600;
+}}
+QToolButton#findToggle:hover {{
+    background-color: {c.hover};
+    border-color: {c.border_strong};
+}}
+QToolButton#findToggle:checked {{
+    background-color: {c.accent_soft};
+    border-color: {c.accent};
+    color: {c.fg};
 }}
 
 /* -- Barra de status --------------------------------------------------- */

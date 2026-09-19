@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QTextCursor
 
 from edgemd import APP_NAME, __version__, icon_shapes
-from edgemd.config import DEFAULT_VIEW_MODE, AppConfig
+from edgemd.config import DEFAULT_VIEW_MODE, AppConfig, editing_available
 from edgemd.editor_tab import FILE_FILTER, EditorTab
 from edgemd.export import PdfExporter, export_html
 from edgemd.icons import action_icon, app_icon, clear_action_cache, dot_badge_icon, tray_icon
@@ -304,6 +304,25 @@ class MainWindow(QMainWindow):
             "Selecionar tudo", "Ctrl+A", lambda: self._editor_call("select_all"),
             icon="select-all",
         )
+        # Localizar e substituir só fazem sentido com o editor à vista: no modo
+        # de leitura não há o que procurar nem trocar. As ações nascem
+        # desabilitadas, e _update_actions cuida disso a cada troca de modo.
+        self.action_find = make(
+            "Localizar…", "Ctrl+F", self.open_find,
+            tip="Localizar no documento (só na edição)", icon="find",
+        )
+        self.action_find_next = make(
+            "Localizar próxima", "F3", lambda: self._search_step(1),
+            tip="Ir para a próxima ocorrência", icon="find-next",
+        )
+        self.action_find_previous = make(
+            "Localizar anterior", "Shift+F3", lambda: self._search_step(-1),
+            tip="Ir para a ocorrência anterior", icon="find-previous",
+        )
+        self.action_replace = make(
+            "Substituir…", "Ctrl+H", self.open_replace,
+            tip="Localizar e substituir (só na edição)", icon="replace",
+        )
 
         self.action_bold = make(
             "Negrito", "Ctrl+B", lambda: self._wrap("**", "**", "negrito"),
@@ -482,6 +501,11 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self.action_copy)
         edit_menu.addAction(self.action_paste)
         edit_menu.addAction(self.action_select_all)
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.action_find)
+        edit_menu.addAction(self.action_find_next)
+        edit_menu.addAction(self.action_find_previous)
+        edit_menu.addAction(self.action_replace)
 
         insert_menu = bar.addMenu("&Inserir")
         insert_menu.addAction(self.action_bold)
@@ -1095,6 +1119,63 @@ class MainWindow(QMainWindow):
         else:
             getattr(editor, method)()
 
+    # ------------------------------------------------------------------
+    # Busca
+    # ------------------------------------------------------------------
+    def open_find(self) -> None:
+        """Abre a barra de localização no documento atual."""
+        tab = self.current_tab
+        if tab is None:
+            return
+        if not self._editing_available():
+            self._tell_read_mode()
+            return
+        tab.open_search(with_replace=False)
+
+    def open_replace(self) -> None:
+        """Abre a barra já com o campo de substituição."""
+        tab = self.current_tab
+        if tab is None:
+            return
+        if not self._editing_available():
+            self._tell_read_mode()
+            return
+        tab.open_search(with_replace=True)
+
+    def _search_step(self, direction: int) -> None:
+        """F3 e Shift+F3.
+
+        Com a barra fechada, o atalho a abre em vez de não fazer nada — é o que
+        se espera ao apertar F3 para repetir a última busca.
+        """
+        tab = self.current_tab
+        if tab is None or not self._editing_available():
+            return
+        if not tab.is_searching:
+            tab.open_search(with_replace=False)
+            return
+        tab.search.step(direction)
+
+    def _editing_available(self) -> bool:
+        """True quando o editor está à vista, ou seja, fora do modo de leitura."""
+        return editing_available(self._view_mode)
+
+    def _tell_read_mode(self) -> None:
+        self._status_message.setText(
+            "Localizar e substituir ficam disponíveis na edição — "
+            "clique em Editar (Ctrl+Shift+D)."
+        )
+        QTimer.singleShot(4000, lambda: self._status_message.setText(""))
+
+    def _close_search_on_all_tabs(self) -> None:
+        """Fecha a barra de busca em todas as abas.
+
+        Ao entrar no modo de leitura, deixar a barra aberta numa aba escondida
+        faria o próximo ``Ctrl+F`` abrir algo que não está à vista.
+        """
+        for tab in self._tabs():
+            tab.close_search()
+
     def _wrap(self, before: str, after: str, placeholder: str) -> None:
         tab = self.current_tab
         if tab is not None:
@@ -1253,6 +1334,11 @@ class MainWindow(QMainWindow):
         self.preview.setVisible(show_preview)
         self.mode_bar.set_mode(mode)
 
+        # Busca é recurso de edição: esconder o editor com a barra aberta
+        # deixaria um campo de texto ativo operando sobre algo invisível.
+        if not show_editor:
+            self._close_search_on_all_tabs()
+
         action = {
             "preview": self.action_view_preview,
             "split": self.action_view_split,
@@ -1270,6 +1356,12 @@ class MainWindow(QMainWindow):
             self._schedule_render()
         if show_editor and self.current_tab is not None:
             self.current_tab.editor.setFocus()
+
+        # O modo decide o que está habilitado — localizar e substituir só valem
+        # com o editor à vista. Sem esta chamada, entrar em edição pelo botão
+        # "Editar" deixaria as ações de busca cinzas, porque nada mais avisa a
+        # interface de que o modo mudou.
+        self._update_actions()
 
     def _enforce_mode_layout(self) -> None:
         """Ajusta as larguras do divisor para o modo atual.
@@ -1420,6 +1512,16 @@ class MainWindow(QMainWindow):
             self.action_hr,
         ):
             action.setEnabled(has_tab)
+
+        # Busca exige duas coisas: uma aba aberta e o editor à vista. No modo
+        # de leitura não há o que procurar, então a ação fica desabilitada em
+        # vez de abrir uma barra que não pode operar sobre nada.
+        pode_buscar = has_tab and self._editing_available()
+        for action in (
+            self.action_find, self.action_find_next,
+            self.action_find_previous, self.action_replace,
+        ):
+            action.setEnabled(pode_buscar)
 
         if tab is not None:
             self.action_undo.setEnabled(tab.editor.document().isUndoAvailable())

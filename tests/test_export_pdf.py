@@ -48,12 +48,6 @@ def destruir(widget, app: QApplication) -> None:
     app.processEvents()
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    # Precisa de sys.argv real: o Chromium usa a linha de comando para se
-    # inicializar, e uma lista vazia faz o WebEngine não subir.
-    app = QApplication.instance() or QApplication(sys.argv)
-    yield app
 
 
 @pytest.fixture(scope="module")

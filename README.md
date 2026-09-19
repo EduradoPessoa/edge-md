@@ -64,6 +64,7 @@ instância única, ícone na bandeja e associação de arquivos.
 - Abas, com marca de alteração não salva
 - Numeração de linhas e realce de sintaxe
 - `Enter` continua listas e citações
+- Localizar e substituir, com destaque das ocorrências
 - Gravação atômica: nunca deixa arquivo pela metade
 - Preserva encoding (UTF-8/UTF-16/Windows-1252) e fim de linha
 
@@ -91,6 +92,10 @@ instância única, ícone na bandeja e associação de arquivos.
 **Modo de edição** — um clique em *Editar*
 
 <img src="docs-exemplo/captura-dark-edicao.png" alt="EdgeMD em modo de edição, tema escuro" width="820" />
+
+**Localizar e substituir** — com as ocorrências destacadas
+
+<img src="docs-exemplo/captura-dark-busca.png" alt="EdgeMD com a barra de busca aberta" width="820" />
 
 **Tema claro**
 
@@ -170,10 +175,33 @@ sua escolha é preservada.
 | `Ctrl+Shift+M` | Somente editor | `Ctrl+Shift+9` | Item de tarefa |
 | `Ctrl+T` | Alternar tema | `Ctrl+E` | Exportar HTML |
 | `Ctrl+L` | Barra lateral | `Ctrl+Shift+E` | Exportar PDF |
+| `Ctrl+F` | Localizar (na edição) | `F3` / `Shift+F3` | Próxima / anterior |
+| `Ctrl+H` | Localizar e substituir | `Esc` | Fechar a busca |
 | Duplo clique no documento | Entrar na edição | `F5` | Redesenhar o preview |
 
 Fechar a janela (**X**) não encerra o app: ele continua na bandeja. Para sair de
 verdade, use **Arquivo → Sair** ou o menu do ícone na bandeja.
+
+## Localizar e substituir
+
+Disponível **só na edição** — no modo de leitura não há o que procurar nem
+trocar, então as ações ficam desabilitadas em vez de abrir uma barra que não
+pode operar sobre nada. Ao voltar para a leitura, a barra se fecha sozinha: um
+campo ativo sobre um editor escondido seria um comando às cegas.
+
+- `Ctrl+F` abre com o campo de busca; `Ctrl+H` já traz o de substituição.
+- Com uma palavra selecionada no editor, ela vem como termo inicial.
+- `Enter` vai para a próxima ocorrência, `Shift+Enter` para a anterior.
+- `F3` e `Shift+F3` funcionam mesmo com a barra fechada — abrem e navegam.
+- O contador mostra "3 de 17", e o campo fica com contorno vermelho quando não
+  há resultado.
+- Todas as ocorrências ficam destacadas em âmbar; a atual, mais forte.
+- "Substituir" troca a ocorrência em foco e avança; "Substituir tudo" troca de
+  uma vez e entra no histórico como **um único** `Ctrl+Z`.
+
+Opções na própria barra: **Aa** diferencia maiúsculas, **ab** exige palavra
+inteira, **.*** trata o termo como expressão regular. Em modo regex, o campo de
+substituição aceita `\1`..`\9` para referenciar grupos capturados.
 
 ## Exportação
 
@@ -215,6 +243,9 @@ src/edgemd/
   mode_bar.py               faixa com o nome do arquivo e Editar/Concluir
   sidebar.py                árvore de arquivos
   tray.py                   ícone na bandeja
+  find_bar.py               barra de localizar e substituir
+  search.py                 lógica de busca (sem interface)
+  search_controller.py      liga a barra ao texto do editor
   theme.py                  paleta única: gera o CSS do preview e o QSS do Qt
   icon_shapes.py            desenho dos ícones das ações, em SVG
   icons.py                  arte do produto e ícones de ação
@@ -309,7 +340,10 @@ que quebrava a sincronia de rolagem em silêncio foi encontrado.
 - **Uma barra lateral por vez**: abrir uma pasta substitui a anterior.
 - **Somente Windows** na associação de arquivos, na bandeja e no envio para a
   Lixeira. O resto do app é portável.
-- **Não há busca/substituição** dentro do documento ainda.
+- **A busca não alcança o preview**: em modo de leitura ela fica desabilitada,
+  por escolha, e não por limitação técnica.
+- **Buscas muito amplas** (como "a" num arquivo grande) destacam no máximo 5000
+  ocorrências; a contagem continua mostrando o total real.
 
 ## Licença
 

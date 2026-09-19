@@ -26,10 +26,6 @@ from edgemd.safety import (  # noqa: E402
 )
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    app = QApplication.instance() or QApplication([])
-    yield app
 
 
 @pytest.fixture
@@ -204,12 +200,18 @@ class TestExceptionHook:
 
             def segundo() -> None:
                 eventos.append("segundo disparou")
-                qapp.quit()
 
             QTimer.singleShot(0, primeiro)
             QTimer.singleShot(120, segundo)
-            QTimer.singleShot(4000, qapp.quit)  # rede contra travamento do teste
-            qapp.exec()
+
+            # Bombear eventos em vez de chamar exec(): a aplicação é
+            # compartilhada pela sessão, e um quit() pedido por outro teste faria
+            # o exec() retornar antes de o segundo temporizador disparar. Era
+            # exatamente isso que fazia este teste passar sozinho e falhar na
+            # suíte completa.
+            from conftest import pump
+
+            pump(qapp, 600)
         finally:
             sys.excepthook = original
 

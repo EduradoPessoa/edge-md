@@ -33,7 +33,21 @@ VIEW_MODES = ("preview", "split", "editor")
 #: verificado sem importar a janela — que sobe o Chromium só para existir.
 DEFAULT_VIEW_MODE = "preview"
 
+#: Modos em que o editor está à vista.
+EDITING_VIEW_MODES = ("split", "editor")
+
 THEMES = ("light", "dark")
+
+
+def editing_available(view_mode: str) -> bool:
+    """True quando o modo atual mostra o editor.
+
+    Decisões que dependem de "dá para editar agora?" — habilitar localizar e
+    substituir, por exemplo — passam por aqui. É regra de produto, não detalhe
+    de widget, então mora junto das preferências: assim dá para verificá-la sem
+    abrir janela nenhuma.
+    """
+    return view_mode in EDITING_VIEW_MODES
 
 
 def _as_bool(value: Any, default: bool) -> bool:

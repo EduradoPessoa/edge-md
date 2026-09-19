@@ -19,11 +19,6 @@ pytest.importorskip("PyQt6.QtWidgets")
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    """QApplication viva durante o módulo: criar QWidget sem ela é erro fatal."""
-    app = QApplication.instance() or QApplication([])
-    yield app
 
 
 @pytest.fixture
