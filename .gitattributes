@@ -1,0 +1,23 @@
+# Normaliza o fim de linha em todo o repositório.
+# Sem isto, o Git no Windows converteria os arquivos e os scripts PowerShell
+# poderiam chegar ao clone com CRLF misto.
+* text=auto eol=lf
+
+# Scripts do Windows precisam de CRLF para o PowerShell não reclamar.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binários: nunca converter, nunca tentar mostrar diff de texto.
+*.png binary
+*.ico binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# O CSS e o JS vendorizados vêm de pacotes npm; ficam fora do diff para não
+# poluir a revisão de código do projeto.
+src/edgemd/render/assets/vendor/** linguist-vendored
+src/edgemd/render/assets/pygments-*.css linguist-generated
+src/edgemd/render/assets/theme-*.css linguist-generated

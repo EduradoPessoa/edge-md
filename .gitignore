@@ -1,0 +1,15 @@
+# Ferramentas de build ignoradas pelo Git
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Capturas e configs temporárias geradas por tools/smoke_gui.py
+scratch/
+scratch-*
+
+# Ambiente virtual
+.venv/
+venv/

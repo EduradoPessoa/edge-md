@@ -1,0 +1,21 @@
+# EdgeMD — dependências de runtime
+
+# Qt runtime e bindings.
+# ATENÇÃO: a versão do WebEngine DEVE acompanhar a linha do PyQt6 instalado,
+# senão o runtime Qt fica com duas versões e o Chromium não sobe — o preview
+# falha com erro de contexto OpenGL.
+PyQt6>=6.10,<6.11
+PyQt6-WebEngine==6.10.0
+
+# Pipeline de Markdown
+markdown-it-py>=3.0
+mdit-py-plugins>=0.4
+Pygments>=2.17
+
+# Usado por tools/make_icons.py (ícones) e tools/make_demo_image.py.
+# Não é preciso para rodar o app, só para as ferramentas de build.
+Pillow>=10.0
+
+# Desenvolvimento / testes
+pytest>=8.0
+pytest-qt>=4.4

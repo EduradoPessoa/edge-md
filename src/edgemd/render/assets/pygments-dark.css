@@ -1,0 +1,87 @@
+/* ==========================================================================
+   Realce de sintaxe — Tema escuro — estilo github-dark
+   ARQUIVO GERADO. Não edite à mão: rode `python tools/generate_pygments_css.py`.
+   As classes (.k, .s, .nf, ...) são os spans que o Pygments emite quando
+   chamado com nowrap=True; cada uma é escopada sob .code-block__pre para não
+   vazar para o resto do documento.
+   ========================================================================== */
+
+.code-block__pre { color: #e6edf3; }
+.code-block__pre .err { color: #f85149; }
+.code-block__pre .k { color: #ff7b72; }
+.code-block__pre .kc { color: #79c0ff; }
+.code-block__pre .kp { color: #79c0ff; }
+.code-block__pre .n { color: #e6edf3; }
+.code-block__pre .nc { color: #f0883e; font-weight: 600; }
+.code-block__pre .no { color: #79c0ff; font-weight: 600; }
+.code-block__pre .nd { color: #d2a8ff; font-weight: 600; }
+.code-block__pre .ni { color: #ffa657; }
+.code-block__pre .ne { color: #f0883e; font-weight: 600; }
+.code-block__pre .nf { color: #d2a8ff; font-weight: 600; }
+.code-block__pre .nl { color: #79c0ff; font-weight: 600; }
+.code-block__pre .nn { color: #ff7b72; }
+.code-block__pre .py { color: #79c0ff; }
+.code-block__pre .nt { color: #7ee787; }
+.code-block__pre .nv { color: #79c0ff; }
+.code-block__pre .l { color: #a5d6ff; }
+.code-block__pre .ld { color: #79c0ff; }
+.code-block__pre .s { color: #a5d6ff; }
+.code-block__pre .sa { color: #79c0ff; }
+.code-block__pre .dl { color: #79c0ff; }
+.code-block__pre .se { color: #79c0ff; }
+.code-block__pre .sh { color: #79c0ff; }
+.code-block__pre .sr { color: #79c0ff; }
+.code-block__pre .m { color: #a5d6ff; }
+.code-block__pre .c { color: #8b949e; font-style: italic; }
+.code-block__pre .cp { color: #8b949e; font-weight: 600; font-style: italic; }
+.code-block__pre .cs { color: #8b949e; font-weight: 600; font-style: italic; }
+.code-block__pre .o { color: #ff7b72; font-weight: 600; }
+.code-block__pre .g { color: #e6edf3; }
+.code-block__pre .gd { color: #ffa198; background-color: #490202; }
+.code-block__pre .ge { color: #e6edf3; font-style: italic; }
+.code-block__pre .gr { color: #ffa198; }
+.code-block__pre .gh { color: #79c0ff; font-weight: 600; }
+.code-block__pre .gi { color: #56d364; background-color: #0f5323; }
+.code-block__pre .go { color: #8b949e; }
+.code-block__pre .gp { color: #8b949e; }
+.code-block__pre .gs { color: #e6edf3; font-weight: 600; }
+.code-block__pre .ges { color: #e6edf3; font-weight: 600; font-style: italic; }
+.code-block__pre .gu { color: #79c0ff; }
+.code-block__pre .gt { color: #ff7b72; }
+.code-block__pre .w { color: #6e7681; }
+.code-block__pre .esc { color: #e6edf3; }
+.code-block__pre .x { color: #e6edf3; }
+.code-block__pre .kd { color: #ff7b72; }
+.code-block__pre .kn { color: #ff7b72; }
+.code-block__pre .kr { color: #ff7b72; }
+.code-block__pre .kt { color: #ff7b72; }
+.code-block__pre .na { color: #e6edf3; }
+.code-block__pre .nb { color: #e6edf3; }
+.code-block__pre .bp { color: #e6edf3; }
+.code-block__pre .fm { color: #d2a8ff; font-weight: 600; }
+.code-block__pre .nx { color: #e6edf3; }
+.code-block__pre .vc { color: #79c0ff; }
+.code-block__pre .vg { color: #79c0ff; }
+.code-block__pre .vi { color: #79c0ff; }
+.code-block__pre .vm { color: #79c0ff; }
+.code-block__pre .sb { color: #a5d6ff; }
+.code-block__pre .sc { color: #a5d6ff; }
+.code-block__pre .sd { color: #a5d6ff; }
+.code-block__pre .s2 { color: #a5d6ff; }
+.code-block__pre .si { color: #a5d6ff; }
+.code-block__pre .sx { color: #a5d6ff; }
+.code-block__pre .s1 { color: #a5d6ff; }
+.code-block__pre .ss { color: #a5d6ff; }
+.code-block__pre .mb { color: #a5d6ff; }
+.code-block__pre .mf { color: #a5d6ff; }
+.code-block__pre .mh { color: #a5d6ff; }
+.code-block__pre .mi { color: #a5d6ff; }
+.code-block__pre .il { color: #a5d6ff; }
+.code-block__pre .mo { color: #a5d6ff; }
+.code-block__pre .ow { color: #ff7b72; font-weight: 600; }
+.code-block__pre .p { color: #e6edf3; }
+.code-block__pre .pm { color: #e6edf3; }
+.code-block__pre .ch { color: #8b949e; font-style: italic; }
+.code-block__pre .cm { color: #8b949e; font-style: italic; }
+.code-block__pre .cpf { color: #8b949e; font-style: italic; }
+.code-block__pre .c1 { color: #8b949e; font-style: italic; }

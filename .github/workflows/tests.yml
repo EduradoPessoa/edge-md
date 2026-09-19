@@ -1,0 +1,56 @@
+name: testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    # O app é específico do Windows: a associação de arquivos, a bandeja e o
+    # envio para a Lixeira usam APIs do sistema. Rodar só no Linux daria uma
+    # suíte verde que não testa o que o produto realmente faz.
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Baixar bibliotecas de diagrama e fórmula
+        # Mermaid e KaTeX são vendorizados no repositório, mas o passo garante
+        # que a suíte valide os arquivos reais.
+        run: python tools/fetch_vendor.py
+
+      - name: Gerar ícones
+        run: python tools/make_icons.py
+
+      - name: Conferir que o CSS do tema está em dia com a paleta
+        # O CSS do preview é gerado a partir de edgemd/theme.py. Se alguém mexer
+        # na paleta e esquecer de regerar, o teste de sincronia falharia de
+        # forma confusa; aqui a mensagem é direta.
+        run: python tools/generate_theme_css.py
+
+      - name: Rodar a suíte
+        # O Chromium do Qt WebEngine precisa de rasterização por software no
+        # runner, que não tem GPU.
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QTWEBENGINE_CHROMIUM_FLAGS: >-
+            --disable-gpu --no-sandbox --enable-unsafe-swiftshader
+            --disable-dev-shm-usage --disable-features=Vulkan
+          QT_OPENGL: software
+        run: python -m pytest tests/ -q

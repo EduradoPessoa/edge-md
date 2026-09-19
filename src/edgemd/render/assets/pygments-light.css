@@ -1,0 +1,75 @@
+/* ==========================================================================
+   Realce de sintaxe — Tema claro — estilo friendly
+   ARQUIVO GERADO. Não edite à mão: rode `python tools/generate_pygments_css.py`.
+   As classes (.k, .s, .nf, ...) são os spans que o Pygments emite quando
+   chamado com nowrap=True; cada uma é escopada sob .code-block__pre para não
+   vazar para o resto do documento.
+   ========================================================================== */
+
+.code-block__pre .w { color: #bbbbbb; }
+.code-block__pre .c { color: #60a0b0; font-style: italic; }
+.code-block__pre .cp { color: #007020; }
+.code-block__pre .cs { color: #60a0b0; background-color: #fff0f0; }
+.code-block__pre .k { color: #007020; font-weight: 600; }
+.code-block__pre .kp { color: #007020; }
+.code-block__pre .kt { color: #902000; }
+.code-block__pre .o { color: #666666; }
+.code-block__pre .ow { color: #007020; font-weight: 600; }
+.code-block__pre .nb { color: #007020; }
+.code-block__pre .nf { color: #06287e; }
+.code-block__pre .nc { color: #0e84b5; font-weight: 600; }
+.code-block__pre .nn { color: #0e84b5; font-weight: 600; }
+.code-block__pre .ne { color: #007020; }
+.code-block__pre .nv { color: #bb60d5; }
+.code-block__pre .no { color: #60add5; }
+.code-block__pre .nl { color: #002070; font-weight: 600; }
+.code-block__pre .ni { color: #d55537; font-weight: 600; }
+.code-block__pre .na { color: #4070a0; }
+.code-block__pre .nt { color: #062873; font-weight: 600; }
+.code-block__pre .nd { color: #555555; font-weight: 600; }
+.code-block__pre .s { color: #4070a0; }
+.code-block__pre .sd { color: #4070a0; font-style: italic; }
+.code-block__pre .si { color: #70a0d0; font-style: italic; }
+.code-block__pre .se { color: #4070a0; font-weight: 600; }
+.code-block__pre .sr { color: #235388; }
+.code-block__pre .ss { color: #517918; }
+.code-block__pre .sx { color: #c65d09; }
+.code-block__pre .m { color: #40a070; }
+.code-block__pre .gh { color: #000080; font-weight: 600; }
+.code-block__pre .gu { color: #800080; font-weight: 600; }
+.code-block__pre .gd { color: #A00000; }
+.code-block__pre .gi { color: #00A000; }
+.code-block__pre .gr { color: #FF0000; }
+.code-block__pre .ge { font-style: italic; }
+.code-block__pre .gs { font-weight: 600; }
+.code-block__pre .ges { font-weight: 600; font-style: italic; }
+.code-block__pre .gp { color: #c65d09; font-weight: 600; }
+.code-block__pre .go { color: #888888; }
+.code-block__pre .gt { color: #0044DD; }
+.code-block__pre .kc { color: #007020; font-weight: 600; }
+.code-block__pre .kd { color: #007020; font-weight: 600; }
+.code-block__pre .kn { color: #007020; font-weight: 600; }
+.code-block__pre .kr { color: #007020; font-weight: 600; }
+.code-block__pre .bp { color: #007020; }
+.code-block__pre .fm { color: #06287e; }
+.code-block__pre .vc { color: #bb60d5; }
+.code-block__pre .vg { color: #bb60d5; }
+.code-block__pre .vi { color: #bb60d5; }
+.code-block__pre .vm { color: #bb60d5; }
+.code-block__pre .sa { color: #4070a0; }
+.code-block__pre .sb { color: #4070a0; }
+.code-block__pre .sc { color: #4070a0; }
+.code-block__pre .dl { color: #4070a0; }
+.code-block__pre .s2 { color: #4070a0; }
+.code-block__pre .sh { color: #4070a0; }
+.code-block__pre .s1 { color: #4070a0; }
+.code-block__pre .mb { color: #40a070; }
+.code-block__pre .mf { color: #40a070; }
+.code-block__pre .mh { color: #40a070; }
+.code-block__pre .mi { color: #40a070; }
+.code-block__pre .il { color: #40a070; }
+.code-block__pre .mo { color: #40a070; }
+.code-block__pre .ch { color: #60a0b0; font-style: italic; }
+.code-block__pre .cm { color: #60a0b0; font-style: italic; }
+.code-block__pre .cpf { color: #60a0b0; font-style: italic; }
+.code-block__pre .c1 { color: #60a0b0; font-style: italic; }

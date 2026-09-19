@@ -1,0 +1,489 @@
+/* ==========================================================================
+   Leitor MD — estilos estruturais
+   As cores vêm de variáveis definidas em theme-light.css / theme-dark.css,
+   então este arquivo nunca menciona uma cor literal. Trocar de tema é só
+   habilitar a outra folha de estilo.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height);
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Coluna de leitura centrada, com respiro nas laterais. */
+.markdown-body {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2.5rem 2rem 6rem;
+}
+
+/* Barra de rolagem discreta (Chromium). */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border: 3px solid var(--bg);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+::selection {
+  background: var(--selection);
+}
+
+/* --------------------------------------------------------------------------
+   Títulos
+   -------------------------------------------------------------------------- */
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 2rem 0 0.75rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  scroll-margin-top: 1.5rem;
+}
+
+h1:first-child,
+h2:first-child,
+h3:first-child {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 2.1em;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+h3 { font-size: 1.25em; }
+h4 { font-size: 1.05em; }
+h5 { font-size: 0.95em; }
+h6 {
+  font-size: 0.88em;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* --------------------------------------------------------------------------
+   Texto
+   -------------------------------------------------------------------------- */
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+}
+
+strong { font-weight: 650; }
+
+hr {
+  height: 1px;
+  margin: 2.5rem 0;
+  border: 0;
+  background: var(--border);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  display: block;
+  margin: 1.25rem auto;
+}
+
+/* --------------------------------------------------------------------------
+   Listas
+   -------------------------------------------------------------------------- */
+
+ul, ol {
+  margin: 0 0 1rem;
+  padding-left: 1.6rem;
+}
+
+li { margin: 0.3rem 0; }
+li > ul, li > ol { margin: 0.3rem 0 0.4rem; }
+
+li.task-list-item {
+  list-style: none;
+  margin-left: -1.4rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+li.task-list-item input[type="checkbox"] {
+  margin-top: 0.32em;
+  width: 1.05em;
+  height: 1.05em;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+  cursor: default;
+}
+
+li.task-list-item:has(input:checked) > * {
+  color: var(--fg-subtle);
+  text-decoration: line-through;
+  text-decoration-color: var(--border-strong);
+}
+
+/* --------------------------------------------------------------------------
+   Citação e avisos
+   -------------------------------------------------------------------------- */
+
+blockquote {
+  margin: 1.25rem 0;
+  padding: 0.35rem 0 0.35rem 1.15rem;
+  border-left: 3px solid var(--quote-bar);
+  color: var(--fg-muted);
+  background: var(--quote-bg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+blockquote > :last-child { margin-bottom: 0; }
+
+/* --------------------------------------------------------------------------
+   Código
+   -------------------------------------------------------------------------- */
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  font-variant-ligatures: none;
+}
+
+/* Código inline (fora de bloco). */
+:not(pre) > code {
+  padding: 0.18em 0.4em;
+  background: var(--code-inline-bg);
+  border: 1px solid var(--code-inline-border);
+  border-radius: var(--radius-sm);
+  color: var(--code-inline-fg);
+  white-space: break-spaces;
+}
+
+/* Bloco de código com barra de título e botão copiar. */
+.code-block {
+  position: relative;
+  margin: 1.25rem 0;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.code-block__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem 0.4rem 0.85rem;
+  background: var(--code-bar-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-block__lang {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  user-select: none;
+}
+
+.code-block__copy {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 550;
+  padding: 0.25rem 0.6rem;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.code-block:hover .code-block__copy,
+.code-block__copy:focus-visible {
+  opacity: 1;
+}
+
+.code-block__copy:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.code-block__copy.is-copied {
+  opacity: 1;
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.code-block__pre {
+  margin: 0;
+  padding: 0.95rem 1.1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+  background: transparent;
+}
+
+.code-block__pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--code-fg);
+}
+
+/* Bloco de código sem cerca de linguagem, escrito com recuo. */
+.markdown-body > pre {
+  margin: 1.25rem 0;
+  padding: 0.95rem 1.1rem;
+  overflow-x: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   Tabelas
+   -------------------------------------------------------------------------- */
+
+.table-wrap {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.94em;
+}
+
+th, td {
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+thead th {
+  background: var(--table-head-bg);
+  font-weight: 620;
+  font-size: 0.86em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+tbody tr:hover { background: var(--table-hover); }
+
+/* --------------------------------------------------------------------------
+   Notas de rodapé
+   -------------------------------------------------------------------------- */
+
+.footnotes {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9em;
+  color: var(--fg-muted);
+}
+
+.footnotes ol { padding-left: 1.25rem; }
+.footnotes-sep { display: none; }
+
+a.footnote-ref,
+a.footnote-backref {
+  border-bottom: 0;
+  padding: 0 0.15em;
+}
+a.footnote-ref { font-weight: 600; }
+
+/* --------------------------------------------------------------------------
+   Listas de definição
+   -------------------------------------------------------------------------- */
+
+dl { margin: 1rem 0; }
+dt { font-weight: 620; margin-top: 0.85rem; }
+dd { margin: 0.2rem 0 0 1.4rem; color: var(--fg-muted); }
+
+/* --------------------------------------------------------------------------
+   Diagramas (Mermaid) e avisos de fallback
+   -------------------------------------------------------------------------- */
+
+.diagram-block {
+  margin: 1.4rem 0;
+  padding: 1.1rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  text-align: center;
+}
+
+.diagram-block svg { max-width: 100%; height: auto; }
+
+/* Enquanto o Mermaid não processou (ou se falhou), mostramos o texto. */
+.diagram-block .mermaid-source {
+  margin: 0;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  white-space: pre-wrap;
+}
+
+.diagram-block.is-rendered .mermaid-source { display: none; }
+
+.diagram-block.is-error {
+  border-color: var(--warn);
+}
+.diagram-block.is-error .mermaid-source { display: block; }
+
+/* --------------------------------------------------------------------------
+   Matemática (KaTeX)
+   -------------------------------------------------------------------------- */
+
+.math.block,
+div.math {
+  display: block;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.katex { font-size: 1.06em; }
+.katex-display { margin: 0; }
+
+/* --------------------------------------------------------------------------
+   Aviso flutuante (copiar, erros)
+   -------------------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translate(-50%, 1.5rem);
+  padding: 0.55rem 1.1rem;
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 550;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 100;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* --------------------------------------------------------------------------
+   Indicador de posição da leitura (topo)
+   -------------------------------------------------------------------------- */
+
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--accent);
+  z-index: 50;
+  transition: width 80ms linear;
+}
+
+/* --------------------------------------------------------------------------
+   Impressão / exportação em PDF
+   -------------------------------------------------------------------------- */
+
+@media print {
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+  }
+
+  body { background: #fff; color: #111; }
+
+  .markdown-body {
+    max-width: none;
+    padding: 0;
+  }
+
+  .code-block__copy,
+  .progress-bar,
+  .toast {
+    display: none !important;
+  }
+
+  .code-block,
+  .table-wrap,
+  .diagram-block,
+  blockquote {
+    break-inside: avoid;
+  }
+
+  h1, h2, h3, h4 { break-after: avoid; }
+
+  a { color: #111; border-bottom: 0; }
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}

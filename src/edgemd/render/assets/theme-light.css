@@ -1,0 +1,65 @@
+/* ==========================================================================
+   Tema claro — ARQUIVO GERADO.
+   Não edite à mão: as cores vivem em ``src/mdreader/theme.py``, que alimenta
+   tanto este CSS quanto o QSS da interface Qt. Rode
+   ``python tools/generate_theme_css.py`` depois de mudar a paleta.
+   ========================================================================== */
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Superfícies */
+  --bg: #fdfdfc;
+  --bg-elev: #f5f6f8;
+  --border: #e3e6ea;
+  --border-strong: #cdd2d9;
+
+  /* Texto */
+  --fg: #1f2328;
+  --fg-muted: #59606d;
+  --fg-subtle: #828a96;
+
+  /* Destaque */
+  --accent: #1f6feb;
+  --accent-soft: #e4edfd;
+  --selection: rgba(31, 111, 235, 0.2);
+  --ok: #1a7f52;
+  --warn: #9a6700;
+
+  /* Código */
+  --code-bg: #f6f8fa;
+  --code-bar-bg: #eef1f4;
+  --code-fg: #1f2328;
+  --code-inline-bg: #f0f2f5;
+  --code-inline-border: #dfe3e8;
+  --code-inline-fg: #b5305a;
+
+  /* Citação */
+  --quote-bar: #b6c2d1;
+  --quote-bg: #f7f8fa;
+
+  /* Tabela */
+  --table-head-bg: #f4f6f8;
+  --table-stripe: rgba(0, 0, 0, 0.014);
+  --table-hover: rgba(31, 111, 235, 0.05);
+
+  /* Barra de rolagem */
+  --scrollbar: #ccd2da;
+  --scrollbar-hover: #b3bcc7;
+
+  /* Aviso flutuante */
+  --toast-bg: #2b3140;
+  --toast-fg: #f4f6fa;
+
+  /* Tipografia e medidas */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Inter", "Noto Sans", sans-serif;
+  --font-mono: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", "Consolas", "SF Mono", ui-monospace, monospace;
+  --font-size-base: 16px;
+  --line-height: 1.7;
+  --content-width: 54rem;
+
+  /* Formas */
+  --radius-sm: 5px;
+  --radius-md: 9px;
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
