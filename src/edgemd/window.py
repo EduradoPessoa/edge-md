@@ -20,6 +20,7 @@ from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QDesktopServices, QK
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QInputDialog,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -47,6 +48,8 @@ from edgemd.preview import PreviewView
 from edgemd.render import LARGE_FILE_BYTES, MarkdownRenderer
 from edgemd.safety import guarded_slot
 from edgemd.sidebar import Sidebar
+from edgemd.template_picker import TemplatePicker
+from edgemd import templates as templates_module
 from edgemd.theme import apply_app_theme, colors as theme_colors, system_theme
 from edgemd.tray import TrayIcon
 
@@ -275,6 +278,20 @@ class MainWindow(QMainWindow):
             "Abrir…", "Ctrl+O", self.open_file_dialog,
             tip="Abrir um arquivo Markdown", icon="open",
         )
+        self.action_new_from_template = make(
+            "Novo a partir de modelo…", "Ctrl+Shift+N", self.new_from_template,
+            tip="Criar um documento a partir de um modelo", icon="template",
+        )
+        self.action_save_as_template = make(
+            "Salvar como modelo…", None, self.save_as_template,
+            tip="Guardar o documento atual como modelo para novos arquivos",
+            icon="template-save",
+        )
+        self.action_manage_templates = make(
+            "Abrir pasta de modelos", None, self.open_templates_folder,
+            tip="Editar ou remover os modelos no gerenciador de arquivos",
+            icon="open-folder",
+        )
         self.action_open_folder = make(
             "Abrir pasta…", "Ctrl+Shift+O", self.open_folder_dialog,
             tip="Navegar por uma pasta de notas", icon="open-folder",
@@ -492,6 +509,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.action_open)
         file_menu.addAction(self.action_open_folder)
         file_menu.addSeparator()
+        file_menu.addAction(self.action_new_from_template)
+        file_menu.addSeparator()
 
         self._recent_menu = file_menu.addMenu("Abrir recente")
         self._rebuild_recent_menu()
@@ -567,6 +586,9 @@ class MainWindow(QMainWindow):
         tools_menu.addAction(self.action_register)
         tools_menu.addAction(self.action_unregister)
         tools_menu.addSeparator()
+        tools_menu.addAction(self.action_save_as_template)
+        tools_menu.addAction(self.action_manage_templates)
+        tools_menu.addSeparator()
         tools_menu.addAction(self.action_reveal_config)
 
         help_menu = bar.addMenu("A&juda")
@@ -591,7 +613,7 @@ class MainWindow(QMainWindow):
         self.toolbar = toolbar
 
         groups = [
-            [self.action_new, self.action_open, self.action_open_folder,
+            [self.action_new, self.action_new_from_template, self.action_open, self.action_open_folder,
              self.action_save, self.action_save_as],
             [self.action_view_preview, self.action_view_split, self.action_view_editor],
             [self.action_undo, self.action_redo,
@@ -682,18 +704,124 @@ class MainWindow(QMainWindow):
             index += 1
         return f"Sem título {index}"
 
-    def new_file(self) -> None:
+    def new_file(self, template: str | None = None) -> None:
+        """Cria um documento novo, opcionalmente a partir de um modelo.
+
+        ``template=None`` usa a preferência do usuário: em branco, ou o modelo
+        que ele escolheu como padrão.
+        """
+        nome_modelo = self.config.default_template if template is None else template
+
+        # Se a preferência pede para perguntar, o diálogo decide — e cancelar
+        # não cria arquivo nenhum, em vez de criar um vazio por engano.
+        if template is None and self.config.ask_template_on_new:
+            escolhido = TemplatePicker.ask(self)
+            if escolhido is None:
+                return
+            nome_modelo = "" if escolhido.name == "Em branco" else escolhido.name
+
         tab = EditorTab(theme=self._theme, parent=self)
         tab.set_untitled_label(self._next_untitled_label())
         self._add_tab(tab)
-        # Conteúdo inicial poupa o usuário de digitar o título. Marcamos como
-        # limpo para que uma aba recém-criada não peça confirmação ao fechar.
-        tab.editor.setPlainText("# \n\n")
-        tab.editor.document().setModified(False)
-        cursor = tab.editor.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        tab.editor.setTextCursor(cursor)
+
+        # O conteúdo entra por aqui, e não por setPlainText direto: a aba
+        # precisa nascer limpa, senão fechar um documento que só recebeu o
+        # modelo pediria para salvar algo que o usuário não escreveu.
+        conteudo, cursor = self._initial_content(nome_modelo)
+        tab.set_initial_content(conteudo, cursor)
         tab.editor.setFocus()
+
+    def _initial_content(self, template_name: str) -> tuple[str, int]:
+        """Conteúdo inicial e posição do cursor para um documento novo."""
+        modelo = templates_module.find(template_name)
+        if modelo is None or not modelo.content:
+            # Depois do "# ", pronto para o título.
+            return "# \n\n", 2
+
+        return templates_module.expand(modelo.content)
+
+    def new_from_template(self) -> None:
+        """Pergunta o modelo e cria o documento a partir dele."""
+        escolhido = TemplatePicker.ask(self)
+        if escolhido is None:
+            return
+        self.new_file(template="" if escolhido.name == "Em branco" else escolhido.name)
+
+    def save_as_template(self) -> None:
+        """Guarda o documento atual como modelo."""
+        tab = self.current_tab
+        if tab is None:
+            return
+
+        sugestao = tab.path.stem if tab.path else "novo modelo"
+        nome, ok = QInputDialog.getText(
+            self,
+            "Salvar como modelo",
+            "Nome do modelo:\n\nO documento atual será gravado na pasta de "
+            "modelos e ficará disponível em Novo a partir de modelo.",
+            text=sugestao,
+        )
+        if not ok or not nome.strip():
+            return
+
+        nome = nome.strip()
+        existente = templates_module.find(nome)
+        if existente is not None:
+            if existente.is_builtin:
+                # Sobrescrever o que veio com o app não é possível: o modelo
+                # embutido não tem arquivo. Gravamos uma cópia com outro nome.
+                QMessageBox.information(
+                    self,
+                    "Modelo que acompanha o app",
+                    f"“{nome}” vem com o EdgeMD e não pode ser alterado.\n\n"
+                    f"Vou salvar uma cópia sua chamada “{nome} (meu)”, que passa "
+                    "a ter prioridade na lista.",
+                )
+                nome = f"{nome} (meu)"
+                if templates_module.exists(nome):
+                    QMessageBox.information(
+                        self,
+                        "Modelo já existe",
+                        f"Já existe “{nome}”. Escolha outro nome.",
+                    )
+                    return
+            else:
+                resposta = QMessageBox.question(
+                    self,
+                    "Modelo já existe",
+                    f"Já existe um modelo chamado “{nome}”. Sobrescrever?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if resposta != QMessageBox.StandardButton.Yes:
+                    return
+
+        try:
+            destino = templates_module.save(nome, tab.editor.toPlainText())
+        except OSError as exc:
+            QMessageBox.critical(
+                self,
+                "Não foi possível salvar o modelo",
+                f"Não foi possível gravar em "
+                f"{templates_module.templates_dir()}\n\n{exc}",
+            )
+            return
+
+        self._status_message.setText(f"Modelo “{nome}” salvo em {destino.parent}")
+
+    def open_templates_folder(self) -> None:
+        """Abre a pasta de modelos no gerenciador de arquivos.
+
+        Editar os modelos pelo próprio app é o caminho: são arquivos ``.md``, e
+        o EdgeMD é justamente um editor deles.
+        """
+        pasta = templates_module.templates_dir()
+        if not reveal_in_file_manager(pasta):
+            QMessageBox.information(
+                self,
+                "Pasta de modelos",
+                f"Não foi possível abrir o gerenciador de arquivos.\n\n{pasta}",
+            )
 
     def _add_tab(self, tab: EditorTab, *, activate: bool = True) -> None:
         tab.dirtyChanged.connect(self._on_tab_dirty)
@@ -1619,6 +1747,7 @@ class MainWindow(QMainWindow):
         self.action_export_html.setEnabled(has_tab)
         self.action_export_pdf.setEnabled(has_tab)
         self.action_close_tab.setEnabled(has_tab)
+        self.action_save_as_template.setEnabled(has_tab)
         self.action_close_all.setEnabled(self.tabs.count() > 0)
 
         for action in (

@@ -245,6 +245,55 @@ class Application:
             self.window.quit_application()
 
 
+def install_translations(app: QApplication) -> bool:
+    """Carrega a tradução do Qt para o idioma do sistema.
+
+    Sem isto, os botões dos diálogos padrão saem em inglês — "Cancel", "Yes",
+    "No" — no meio de uma interface em português, porque o texto deles vem do
+    próprio Qt, e não do app.
+
+    Traduzir cada diálogo à mão resolveria só os que a gente escreveu; carregar
+    o catálogo do Qt corrige todos de uma vez, inclusive os que ainda forem
+    criados. O PyQt6 traz os arquivos ``.qm`` junto, então não há dependência
+    extra.
+
+    Devolve False quando não há tradução para o idioma — o app segue em inglês
+    nos diálogos, que é o padrão do Qt.
+    """
+    from PyQt6.QtCore import QLibraryInfo, QLocale, QTranslator
+
+    pasta = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    locale = QLocale.system()
+
+    # O Qt nomeia os catálogos com underscore ("qtbase_pt_BR.qm"), enquanto o
+    # uiLanguages() devolve com hífen ("pt-BR"). Sem converter, o load falha em
+    # silêncio e os diálogos continuam em inglês — que foi o que aconteceu na
+    # primeira versão desta função.
+    candidatos: list[str] = []
+    for nome in locale.uiLanguages():
+        canonico = nome.replace("-", "_")
+        candidatos.extend([f"qtbase_{canonico}", f"qt_{canonico}"])
+        # A forma curta também vale: quando só existe a tradução genérica do
+        # idioma, "pt_BR" precisa cair para "pt".
+        curto = canonico.split("_")[0]
+        candidatos.extend([f"qtbase_{curto}", f"qt_{curto}"])
+
+    for catalogo in candidatos:
+        tradutor = QTranslator(app)
+        if tradutor.load(catalogo, pasta):
+            # A referência precisa sobreviver: um QTranslator destruído deixa
+            # de traduzir, e o objeto sairia de escopo aqui.
+            instalados = getattr(app, "_tradutores", None) or []
+            instalados.append(tradutor)
+            app._tradutores = instalados  # type: ignore[attr-defined]
+            app.installTranslator(tradutor)
+            log.debug("Tradução do Qt carregada: %s", catalogo)
+            return True
+
+    log.debug("Sem tradução do Qt para %s; diálogos padrão em inglês.", locale.name())
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entrada do programa."""
     argv = list(sys.argv if argv is None else argv)
@@ -279,6 +328,7 @@ def main(argv: list[str] | None = None) -> int:
     # Rede de segurança global: sem isto, uma exceção fora de um try interrompe
     # o laço de eventos e o app morre sem avisar nada — nem no console, já que
     # ele roda por pythonw.
+    install_translations(app)
     install_exception_hook(app)
 
     application = Application(app, config)

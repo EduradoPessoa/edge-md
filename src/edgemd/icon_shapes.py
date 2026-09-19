@@ -246,6 +246,19 @@ ICONS: dict[str, str] = {
         f'<circle cx="14.9" cy="9.6" r="1" {_DOT}/>'
     ),
 
+    # -- Modelos -------------------------------------------------------
+    "template": (
+        '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>'
+        '<path d="M14 3v5h5"/>'
+        '<path d="M8.5 12.5h7M8.5 16h4.5"/>'
+    ),
+    "template-save": (
+        '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>'
+        '<path d="M14 3v5h5"/>'
+        '<path d="M8.5 12h5M8.5 15.5h3"/>'
+        '<path d="M18.5 14.5l2.6 2.6-5.1 5.1h-2.6v-2.6z"/>'
+    ),
+
     # -- Exibição do editor --------------------------------------------
     "line-numbers": (
         '<path d="M4 6.5h2.2M4 12h2.2M4 17.5h2.2"/>'
@@ -319,7 +332,7 @@ USED_ACTIONS: tuple[str, ...] = (
     "export-html", "export-pdf", "close", "quit",
     "undo", "redo", "cut", "copy", "paste", "select-all",
     "find", "find-next", "find-previous", "replace",
-    "image", "emoji",
+    "image", "emoji", "template", "template-save",
     "bold", "italic", "strikethrough", "code-inline", "link",
     "code-block", "table", "h1", "h2", "h3", "quote",
     "list-bullet", "list-number", "task", "hr",

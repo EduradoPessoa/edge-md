@@ -66,6 +66,7 @@ instância única, ícone na bandeja e associação de arquivos.
 - `Enter` continua listas e citações
 - Localizar e substituir, com destaque das ocorrências
 - Inserção de link, imagem e emoji, com 376 emojis buscáveis
+- Modelos para novos arquivos, editáveis como qualquer .md
 - Gravação atômica: nunca deixa arquivo pela metade
 - Preserva encoding (UTF-8/UTF-16/Windows-1252) e fim de linha
 
@@ -171,7 +172,8 @@ sua escolha é preservada.
 
 | Atalho | Ação | Atalho | Ação |
 |---|---|---|---|
-| `Ctrl+N` | Novo arquivo | `Ctrl+B` | Negrito |
+| `Ctrl+N` | Novo arquivo (usa o modelo padrão) | `Ctrl+B` | Negrito |
+| `Ctrl+Shift+N` | Novo a partir de modelo | `Ctrl+I` | Itálico |
 | `Ctrl+O` | Abrir | `Ctrl+I` | Itálico |
 | `Ctrl+S` | Salvar | `Ctrl+K` | Link |
 | `Ctrl+W` | Fechar aba | `Ctrl+1` `Ctrl+2` `Ctrl+3` | Títulos 1 a 3 |
@@ -217,6 +219,33 @@ categorias. A busca é em português e ignora acento — "coracao" acha ❤️, 
 acha 🐞 — e apelidos no estilo do GitHub funcionam: `:tada:`, `:rocket:`,
 `:warning:`. `Enter` insere o primeiro resultado. Depois de inserir, o emoji cai
 com um espaço antes se estiver colado numa palavra.
+
+## Modelos para novos arquivos
+
+O `Ctrl+N` cria um documento em branco, ou o modelo que você definir como
+padrão. `Ctrl+Shift+N` pergunta qual usar.
+
+**Salvar como modelo** (menu Ferramentas) guarda o documento aberto como
+modelo. Os modelos ficam em **Ferramentas → Abrir pasta de modelos** — são
+arquivos `.md` comuns, e o melhor editor para eles é o próprio EdgeMD: abra,
+ajuste e salve, com realce e pré-visualização.
+
+O app traz cinco modelos prontos: nota de reunião, documentação de projeto,
+artigo, diário e apresentação de ideia. Eles não podem ser alterados; salvar
+por cima cria uma cópia sua com prioridade na lista.
+
+Os modelos aceitam marcadores que são substituídos na criação:
+
+| Marcador | Vira |
+|---|---|
+| `{data}` | 19/09/2026 |
+| `{hora}` | 14:32 |
+| `{data_iso}` | 2026-09-19 |
+| `{data_hora}` | 19/09/2026 14:32 |
+| `{assunto}` / `{titulo}` | o nome que você digitar no diálogo |
+
+Depois de criar, o cursor já fica na primeira linha em branco do modelo — pronto
+para escrever, sem precisar caçar o lugar.
 
 ## Localizar e substituir
 
@@ -339,6 +368,8 @@ src/edgemd/
   image_insert.py           caminho relativo e cópia da imagem
   emojis.py                 catálogo de emojis com busca
   emoji_picker.py           seletor de emoji em popup
+  templates.py              modelos para novos documentos
+  template_picker.py        escolha de modelo, com prévia
   theme.py                  paleta única: gera o CSS do preview e o QSS do Qt
   icon_shapes.py            desenho dos ícones das ações, em SVG
   icons.py                  arte do produto e ícones de ação

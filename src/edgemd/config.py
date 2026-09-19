@@ -322,6 +322,33 @@ class AppConfig:
     def clear_recent_files(self) -> None:
         self._settings.setValue("files/recent", [])
 
+    # -- modelos ----------------------------------------------------------
+    @property
+    def default_template(self) -> str:
+        """Modelo usado pelo ``Ctrl+N``.
+
+        String vazia significa documento em branco, que é o padrão e o que a
+        maioria quer na maior parte do tempo.
+        """
+        return str(self._settings.value("templates/default", ""))
+
+    @default_template.setter
+    def default_template(self, value: str) -> None:
+        self._settings.setValue("templates/default", str(value or ""))
+
+    @property
+    def ask_template_on_new(self) -> bool:
+        """Se o ``Ctrl+N`` deve perguntar qual modelo usar.
+
+        Desligado por padrão: abrir um diálogo a cada arquivo novo atrapalha
+        quem quase sempre quer um documento vazio.
+        """
+        return _as_bool(self._settings.value("templates/ask_on_new"), False)
+
+    @ask_template_on_new.setter
+    def ask_template_on_new(self, value: bool) -> None:
+        self._settings.setValue("templates/ask_on_new", bool(value))
+
     # -- último diretório -------------------------------------------------
     @property
     def last_directory(self) -> Path:

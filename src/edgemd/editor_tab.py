@@ -175,6 +175,32 @@ class EditorTab(QWidget):
         self._record_disk_signature()
 
     # ------------------------------------------------------------------
+    # Conteúdo inicial
+    # ------------------------------------------------------------------
+    def set_initial_content(self, text: str, cursor: int = 0) -> None:
+        """Preenche um documento recém-criado e o marca como limpo.
+
+        Existe porque ``setPlainText`` dispara ``textChanged``, e o documento
+        nasceria "sujo" — fechar uma aba que só recebeu o conteúdo de um modelo
+        pediria para salvar algo que o usuário não escreveu. Marcar como limpo
+        depois, aqui dentro, é o único lugar onde o estado ``_dirty`` pode ser
+        ajustado com segurança.
+        """
+        self.editor.blockSignals(True)
+        self.editor.setPlainText(text)
+        self.editor.blockSignals(False)
+
+        cursor_obj = self.editor.textCursor()
+        cursor_obj.setPosition(max(0, min(cursor, len(text))))
+        self.editor.setTextCursor(cursor_obj)
+
+        self._dirty = False
+        self.editor.document().setModified(False)
+        self._record_disk_signature()
+        self.titleChanged.emit(self.display_name)
+        self.dirtyChanged.emit(False)
+
+    # ------------------------------------------------------------------
     # Leitura
     # ------------------------------------------------------------------
     def load(self, path: str | Path) -> bool:
