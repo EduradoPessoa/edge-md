@@ -297,19 +297,33 @@ python packaging/build.py --instalador     # bundle + instalador do sistema
 
 O resultado vai para `dist/`:
 
-| Sistema | Bundle | Instalador |
-|---|---|---|
-| Windows | `dist/edgemd/` | `dist/installer/EdgeMD-0.1.0-setup.exe` (Inno Setup) |
-| Linux | `dist/edgemd/` | `dist/linux/edgemd_0.1.0_amd64.deb` e `EdgeMD-0.1.0-x86_64.AppImage` |
-| macOS | `dist/EdgeMD.app` | `dist/macos/EdgeMD-0.1.0.dmg` |
+| Sistema | Bundle | Instalador | Tamanho |
+|---|---|---|---|
+| Windows | `dist/edgemd/` | `EdgeMD-0.1.0-setup.exe` (Inno Setup) | 128 MB |
+| Linux | `dist/edgemd/` | `edgemd_0.1.0_amd64.deb` | 163 MB |
+| Linux | — | `EdgeMD-0.1.0-x86_64.AppImage`, portátil | 191 MB |
+| macOS | `dist/EdgeMD.app` | `EdgeMD-0.1.0.dmg` | 166 MB |
+
+O tamanho vem do Chromium que vai junto: cerca de 500 MB descompactados. É o
+preço da renderização fiel — Mermaid, KaTeX e o CSS do preview funcionam sem
+internet justamente porque tudo viaja dentro do executável.
 
 O instalador do Windows precisa do [Inno Setup](https://jrsoftware.org/isdl.php)
 no PATH; o do Linux, do `dpkg-deb` (vem com o Debian/Ubuntu) e, para o AppImage,
 do `appimagetool` — que o script baixa sozinho quando não encontra.
 
+Para conferir o que foi empacotado sem instalar nada:
+
+```bash
+python tools/inspect_deb.py dist/linux/edgemd_0.1.0_amd64.deb  # lê o .deb por dentro
+python tools/capture_exe.py                                    # abre o .exe e fotografa
+```
+
 ### Pelo GitHub Actions
 
-Publique uma tag e a matriz compila nas três plataformas:
+Publique uma tag e a matriz compila nas três plataformas. Também dá para rodar
+manualmente pelo botão *Run workflow*, que é como testar o empacotamento sem
+publicar nada — nesse caso a versão vem do `pyproject.toml`.
 
 ```bash
 git tag v0.1.0
