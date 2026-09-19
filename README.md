@@ -6,13 +6,13 @@
 
 **Leia Markdown como página, edite quando precisar.**
 
-Leitor e editor de Markdown para Windows, com renderização por Chromium,
+Leitor e editor de Markdown para Windows, Linux e macOS, com renderização por Chromium,
 diagramas e fórmulas que funcionam offline, tema unificado em todo o
 aplicativo e integração nativa com o Windows.
 
 [![Testes](https://github.com/EduradoPessoa/edge-md/actions/workflows/tests.yml/badge.svg)](https://github.com/EduradoPessoa/edge-md/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
-[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows&logoColor=white)](#instala%C3%A7%C3%A3o)
+[![Plataformas](https://img.shields.io/badge/Windows%20%7C%20Linux%20%7C%20macOS-0078d4?logo=linux&logoColor=white)](#gerar-o-executável)
 [![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-3da639)](LICENSE)
 
 </div>
@@ -75,8 +75,8 @@ instância única, ícone na bandeja e associação de arquivos.
 
 - Tema claro e escuro em **todo** o aplicativo
 - Instância única: dez cliques duplos, uma janela
-- Bandeja do Windows, com aviso de alterações pendentes
-- Associação de `.md` gravada em `HKCU` — sem administrador
+- Bandeja do sistema, com aviso de alterações pendentes
+- Associação de `.md` nas três plataformas — sem administrador
 - Exportação para HTML autônomo e PDF
 
 </td></tr>
@@ -110,25 +110,25 @@ instância única, ícone na bandeja e associação de arquivos.
 
 ## Instalação
 
-Requer **Python 3.10 ou superior** e Windows 10 ou 11.
+Requer **Python 3.10 ou superior**. Funciona em Windows 10/11, Linux e macOS.
 
-```powershell
+```bash
 git clone https://github.com/EduradoPessoa/edge-md.git
 cd edge-md
 
 python -m pip install -r requirements.txt
 
 # Bibliotecas de diagrama e fórmula (~4,7 MB, uma vez)
-python tools\fetch_vendor.py
+python tools/fetch_vendor.py
 
 # Ícones a partir da arte de origem
-python tools\make_icons.py
+python tools/make_icons.py
 
-pythonw run.pyw
+python -m edgemd
 ```
 
-Sem `pythonw`, use `python -m edgemd` — a diferença é que aparece uma janela de
-console junto.
+No Windows, use `pythonw run.pyw` em vez de `python -m edgemd`: o `pythonw` não
+abre janela de console junto.
 
 > **Atenção ao Qt WebEngine.** A versão do `PyQt6-WebEngine` precisa acompanhar
 > a linha do `PyQt6`. O `requirements.txt` já fixa `PyQt6-WebEngine==6.10.0`
@@ -250,20 +250,73 @@ fórmulas terminarem de desenhar — sem isso, sairiam em branco.
 
 ## Gerar o executável
 
-```powershell
-python -m pip install pyinstaller Pillow
-pyinstaller edgemd.spec --noconfirm --clean
+O PyInstaller **não compila para outra plataforma**: cada sistema empacota o
+próprio interpretador e as próprias bibliotecas nativas. O caminho mais simples
+é o workflow de release, que roda a matriz nas três e anexa os artefatos a um
+GitHub Release ao publicar uma tag.
+
+### Localmente
+
+```bash
+python -m pip install -r requirements.txt pyinstaller
+python tools/fetch_vendor.py       # no Windows: python tools\fetch_vendor.py
+python tools/make_icons.py           # no Windows: python tools\make_icons.py
+
+python packaging/build.py                  # só o bundle
+python packaging/build.py --instalador     # bundle + instalador do sistema
 ```
 
-O resultado é `dist\edgemd\edgemd.exe`. Depois de gerar, rode a associação
-apontando para ele:
+O resultado vai para `dist/`:
 
-```powershell
-.\installer\register_file_association.ps1 -ExePath dist\edgemd\edgemd.exe -Default
+| Sistema | Bundle | Instalador |
+|---|---|---|
+| Windows | `dist/edgemd/` | `dist/installer/EdgeMD-0.1.0-setup.exe` (Inno Setup) |
+| Linux | `dist/edgemd/` | `dist/linux/edgemd_0.1.0_amd64.deb` e `EdgeMD-0.1.0-x86_64.AppImage` |
+| macOS | `dist/EdgeMD.app` | `dist/macos/EdgeMD-0.1.0.dmg` |
+
+O instalador do Windows precisa do [Inno Setup](https://jrsoftware.org/isdl.php)
+no PATH; o do Linux, do `dpkg-deb` (vem com o Debian/Ubuntu) e, para o AppImage,
+do `appimagetool` — que o script baixa sozinho quando não encontra.
+
+### Pelo GitHub Actions
+
+Publique uma tag e a matriz compila nas três plataformas:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
-O executável fica grande (centenas de MB) porque carrega o Chromium inteiro — é
-o preço da renderização fiel.
+O Release é criado como **rascunho**, para você revisar antes de publicar.
+
+Sobre as assinaturas: o DMG é assinado ad-hoc (roda em quem compilou, mas o
+Gatekeeper avisa em outra máquina) e o `.exe` não é assinado. Distribuir para
+terceiros sem esses avisos exige certificado de desenvolvedor Apple e
+certificado de code signing da Microsoft.
+
+## Privacidade e associação de arquivos por sistema
+
+A associação é o que faz o clique duplo num `.md` abrir aqui, e cada sistema
+resolve isso de um jeito bem diferente. O app detecta onde está rodando e faz a
+coisa certa — o diálogo de **Ferramentas → Associar arquivos** explica o caso da
+sua plataforma.
+
+| | Como funciona | Onde fica |
+|---|---|---|
+| **Windows** | Registro, em três camadas: ProgID, `OpenWithProgids` e `Capabilities` | `HKEY_CURRENT_USER` — sem administrador |
+| **Linux** | Arquivo `.desktop` com `MimeType=` + ícones hicolor + `xdg-mime` | `~/.local/share` e `~/.config/mimeapps.list` |
+| **macOS** | `Info.plist` do bundle, lido pelo LaunchServices | dentro do `EdgeMD.app` |
+
+Nada é instalado em nível de sistema e nenhum dos três pede senha de
+administrador. Desfazer também é possível: `Ferramentas → Desfazer associação`,
+ou os scripts em `installer/` no Windows.
+
+O único que funciona de forma diferente: no macOS a associação **nasce no
+empacotamento**, não em tempo de execução — é o `Info.plist` que declara os
+tipos de documento. Por isso, rodando do código-fonte, o macOS não oferece o
+app; é preciso ter o `EdgeMD.app`. Para defini-lo como padrão por linha de
+comando, o app usa o [`duti`](https://github.com/jhbadger/duti) quando ele está
+instalado, e orienta pelo Finder quando não está.
 
 ## Como foi feito
 
@@ -291,7 +344,12 @@ src/edgemd/
   icons.py                  arte do produto e ícones de ação
   config.py                 preferências (QSettings)
   single_instance.py        canal de instância única (named pipe)
-  file_association.py       registro das associações
+  shell.py                  Lixeira, revelar arquivo e abrir com o padrão
+  association/              associação de arquivos por plataforma
+    common.py               tipos e comandos compartilhados
+    windows.py              registro (HKCU)
+    linux.py                .desktop, ícones hicolor e xdg-mime
+    macos.py                Info.plist do bundle e duti
   export.py                 exportação para HTML e PDF
   safety.py                 rede de segurança contra falhas na interface
   render/
@@ -325,7 +383,7 @@ avisar. Um tratador global transforma isso em aviso — o app continua aberto.
 |---|---|---|
 | Cores, contraste, medidas | `src/edgemd/theme.py` | `python tools\generate_theme_css.py` |
 | Desenho de um ícone de ação | `src/edgemd/icon_shapes.py` | `python tools\preview_icons.py` |
-| Ícone do produto | `EdgeMD.png` (raiz) | `python tools\make_icons.py` |
+| Ícone do produto | `EdgeMD.png` (raiz) | `python tools/make_icons.py` |
 | Catálogo de emojis | `src/edgemd/emojis.py` | — |
 
 O `generate_theme_css.py` é obrigatório depois de mexer na paleta: o preview lê
@@ -379,8 +437,7 @@ que quebrava a sincronia de rolagem em silêncio foi encontrado.
   Chromium engasga ao reconstruir o documento a cada tecla. Use `F5` para
   atualizar sob demanda, ou o modo somente editor.
 - **Uma barra lateral por vez**: abrir uma pasta substitui a anterior.
-- **Somente Windows** na associação de arquivos, na bandeja e no envio para a
-  Lixeira. O resto do app é portável.
+- **Associação de arquivos**: funciona nas três plataformas, mas por mecanismos\r`n  diferentes — veja a seção acima. No macOS exige o `.app` empacotado.\r`n- **Instalador assinado**: nem o `.exe` nem o `.dmg` têm assinatura de\r`n  desenvolvedor, então o sistema avisa na primeira execução.
 - **A busca não alcança o preview**: em modo de leitura ela fica desabilitada,
   por escolha, e não por limitação técnica.
 - **Buscas muito amplas** (como "a" num arquivo grande) destacam no máximo 5000

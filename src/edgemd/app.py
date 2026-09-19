@@ -31,7 +31,7 @@ from edgemd.icons import app_icon
 from edgemd.render import MarkdownRenderer
 from edgemd.safety import install_exception_hook
 from edgemd.single_instance import SingleInstance
-from edgemd.theme import apply_app_theme
+from edgemd.theme import apply_app_theme, system_theme
 
 log = logging.getLogger(__name__)
 
@@ -42,24 +42,13 @@ IPC_KEY = "edgemd-single-instance-v1"
 def initial_theme(config: AppConfig) -> str:
     """Tema com que o app abre.
 
-    Segue o Windows quando a preferência é essa (padrão), senão usa o que o
-    usuário escolheu por último.
+    Segue o sistema quando a preferência é essa (padrão), senão usa o que o
+    usuário escolheu por último. A detecção por plataforma vive em
+    ``theme.system_theme``.
     """
     if not config.theme_follows_system:
         return config.theme
-
-    try:
-        import winreg
-
-        with winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-        ) as key:
-            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
-            return "light" if int(value) == 1 else "dark"
-    except (OSError, ImportError, ValueError):
-        return config.theme
-
+    return system_theme()
 
 # --------------------------------------------------------------------------
 # Argumentos

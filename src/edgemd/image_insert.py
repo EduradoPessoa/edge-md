@@ -1,4 +1,4 @@
-﻿"""Preparo do caminho de uma imagem para inserir no documento.
+"""Preparo do caminho de uma imagem para inserir no documento.
 
 Inserir uma imagem parece trivial — basta escrever ``![](caminho)`` — mas o
 caminho é o que decide se o documento continua portátil. Um ``C:\\Users\\...``

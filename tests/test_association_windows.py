@@ -12,7 +12,8 @@ import sys
 
 import pytest
 
-from edgemd import file_association as fa
+from edgemd.association import common
+from edgemd.association import windows as fa
 
 pytestmark = pytest.mark.skipif(
     sys.platform != "win32", reason="a associação de arquivos é específica do Windows"
@@ -44,15 +45,15 @@ def isolated(monkeypatch):
     import winreg
 
     root = winreg.HKEY_CURRENT_USER
-    fa._delete_tree(root, rf"Software\Classes\{TEST_EXTENSION}")
+    fa.delete_tree(root, rf"Software\Classes\{TEST_EXTENSION}")
 
     yield
 
-    fa._delete_tree(root, rf"Software\Classes\{TEST_EXTENSION}")
-    fa._delete_tree(root, rf"Software\Classes\{TEST_PROG_ID}")
-    fa._delete_tree(root, rf"Software\Classes\Applications\{TEST_EXE_NAME}")
-    fa._delete_tree(root, TEST_CAPABILITIES)
-    fa._delete_tree(root, r"Software\EdgeMD.Pytest")
+    fa.delete_tree(root, rf"Software\Classes\{TEST_EXTENSION}")
+    fa.delete_tree(root, rf"Software\Classes\{TEST_PROG_ID}")
+    fa.delete_tree(root, rf"Software\Classes\Applications\{TEST_EXE_NAME}")
+    fa.delete_tree(root, TEST_CAPABILITIES)
+    fa.delete_tree(root, r"Software\EdgeMD.Pytest")
     try:
         with winreg.OpenKey(
             root, r"Software\RegisteredApplications", 0, winreg.KEY_SET_VALUE
@@ -67,21 +68,38 @@ def isolated(monkeypatch):
 # --------------------------------------------------------------------------
 
 class TestBuildCommand:
+    """O comando é montado pelo comum; o Windows fornece o marcador citado.
+
+    As aspas em volta do ``%1`` são decisão do backend, não da montagem: no
+    Windows sem elas um caminho com espaço chegaria partido em dois argumentos,
+    enquanto no Linux citar o ``%F`` juntaria todos os arquivos num só.
+    """
+
+    def test_marcador_do_windows_vem_citado(self):
+        assert fa.FILE_PLACEHOLDER == '"%1"'
+
     def test_cita_caminhos_com_espaco(self):
-        comando = fa.build_command([r"C:\Program Files\App\app.exe"])
+        comando = fa.build_command(
+            [r"C:\Program Files\App\app.exe"], fa.FILE_PLACEHOLDER
+        )
         assert comando == '"C:\\Program Files\\App\\app.exe" "%1"'
 
     def test_dois_argumentos(self):
-        comando = fa.build_command([r"C:\Python\pythonw.exe", r"C:\app\run.pyw"])
+        comando = fa.build_command(
+            [r"C:\Python\pythonw.exe", r"C:\app\run.pyw"], fa.FILE_PLACEHOLDER
+        )
         assert comando == '"C:\\Python\\pythonw.exe" "C:\\app\\run.pyw" "%1"'
 
     def test_nao_cita_duas_vezes(self):
-        comando = fa.build_command(['"C:\\ja\\citado.exe"'])
+        comando = fa.build_command(['"C:\\ja\\citado.exe"'], fa.FILE_PLACEHOLDER)
         assert comando.count('"C:\\ja\\citado.exe"') == 1
 
-    def test_argumento_percentual(self):
-        # %1 é o arquivo clicado; precisa sobreviver à montagem.
-        assert fa.build_command(["a.exe"]).endswith('"%1"')
+    def test_marcador_sobrevive_a_montagem(self):
+        assert fa.build_command(["a.exe"], fa.FILE_PLACEHOLDER).endswith('"%1"')
+
+    def test_registro_usa_o_marcador_do_backend(self):
+        """O comando gravado no registro precisa ter as aspas."""
+        assert fa.status([r"C:\app\edgemd.exe"]).command.endswith('"%1"')
 
 
 # --------------------------------------------------------------------------
@@ -91,7 +109,7 @@ class TestBuildCommand:
 class TestStatus:
     def test_le_sem_escrever(self, isolated):
         antes = fa.status(TEST_LAUNCHER)
-        assert antes.is_our_default is False
+        assert antes.is_default is False
         assert antes.in_open_with is False
 
         # Uma leitura não pode criar nada.
@@ -117,15 +135,15 @@ class TestStatus:
 class TestRegister:
     def test_registra_como_padrao(self, isolated):
         resultado = fa.register(TEST_LAUNCHER, make_default=True)
-        assert resultado.is_our_default is True
+        assert resultado.is_default is True
         assert resultado.in_open_with is True
-        assert resultado.registered_command == fa.build_command(TEST_LAUNCHER)
+        assert resultado.registered_command == fa.build_command(TEST_LAUNCHER, fa.FILE_PLACEHOLDER)
 
     def test_apenas_abrir_com(self, isolated):
         resultado = fa.register(TEST_LAUNCHER, make_default=False)
         # Presente em "Abrir com", mas sem assumir o padrão.
         assert resultado.in_open_with is True
-        assert resultado.is_our_default is False
+        assert resultado.is_default is False
 
     def test_nao_quebra_o_padrao_existente(self, isolated):
         """make_default=False não pode roubar uma escolha já feita."""
@@ -186,7 +204,7 @@ class TestRegister:
             winreg.HKEY_CURRENT_USER,
             rf"Software\Classes\{TEST_PROG_ID}\shell\open\command",
         )
-        assert comando == fa.build_command(TEST_LAUNCHER)
+        assert comando == fa.build_command(TEST_LAUNCHER, fa.FILE_PLACEHOLDER)
         assert "%1" in comando
 
     def test_grava_o_icone_quando_existe(self, isolated):
@@ -229,7 +247,7 @@ class TestUnregister:
         root = winreg.HKEY_CURRENT_USER
         assert not fa._key_exists(root, rf"Software\Classes\{TEST_PROG_ID}")
         status = fa.status(TEST_LAUNCHER)
-        assert status.is_our_default is False
+        assert status.is_default is False
         assert status.in_open_with is False
 
     def test_preserva_padrao_de_outro_app(self, isolated):

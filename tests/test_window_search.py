@@ -1,4 +1,4 @@
-﻿"""Testes do bloqueio da busca por modo, na janela de verdade.
+"""Testes do bloqueio da busca por modo, na janela de verdade.
 
 ``test_find_bar.py`` cobre a regra isolada (``config.editing_available``). Aqui
 o que se verifica é a ligação: as ações do menu realmente desabilitam no modo

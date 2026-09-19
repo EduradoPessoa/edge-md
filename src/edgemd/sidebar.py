@@ -41,6 +41,7 @@ from PyQt6.QtWidgets import (
 )
 
 from edgemd.editor_tab import MARKDOWN_SUFFIXES
+from edgemd.shell import move_to_trash, reveal_in_file_manager, trash_name
 
 log = logging.getLogger(__name__)
 
@@ -284,18 +285,9 @@ class Sidebar(QWidget):
             self._model.setRootPath(str(self._root))
 
     def reveal_in_explorer(self, path: str) -> None:
-        """Abre o Explorer com o arquivo selecionado."""
-        target = Path(path)
-        try:
-            if sys.platform == "win32":
-                if target.is_file():
-                    subprocess.Popen(["explorer", "/select,", str(target)])
-                else:
-                    os.startfile(str(target))  # noqa: S606 - API do Windows
-            else:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(target.parent)))
-        except OSError as exc:
-            log.error("Falha ao abrir o Explorer em %s: %s", target, exc)
+        """Mostra o arquivo no gerenciador de pastas do sistema."""
+        if not reveal_in_file_manager(path):
+            log.warning("Não foi possível mostrar %s no gerenciador de pastas.", path)
 
     def select_path(self, path: str | Path) -> None:
         """Seleciona um arquivo na árvore, se ele estiver dentro da raiz."""
@@ -376,8 +368,8 @@ class Sidebar(QWidget):
         answer = QMessageBox.question(
             self,
             "Excluir",
-            f"Excluir definitivamente?\n\n{target}\n\n"
-            "O arquivo vai para a Lixeira do Windows.",
+            f"Excluir definitivamente?\\n\\n{target}\\n\\n"
+            f"O arquivo vai para a {trash_name()} do sistema.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -385,41 +377,18 @@ class Sidebar(QWidget):
             return
 
         try:
-            self._send_to_trash(target)
-        except Exception as exc:  # noqa: BLE001 - qualquer falha vira aviso
+            move_to_trash(target)
+        except OSError as exc:
             QMessageBox.critical(
                 self, "Não foi possível excluir", f"{target}\n\n{exc}"
             )
 
     @staticmethod
     def _send_to_trash(target: Path) -> None:
-        """Manda para a Lixeira em vez de apagar de vez.
+        """Compatibilidade: a implementação vive em :mod:`edgemd.shell`.
 
-        Exclusão definitiva por engano num app de notas é irrecuperável, então
-        preferimos a Lixeira. Não há API de Lixeira na biblioteca padrão; em
-        Windows usamos o PowerShell (que alguns ambientes bloqueiam), com
-        remoção direta como último recurso.
+        Mantido como delegação para não quebrar quem já chamava este nome; a
+        lógica por plataforma (PowerShell no Windows, ``gio`` no Linux,
+        AppleScript no macOS) está toda em ``shell.move_to_trash``.
         """
-        if sys.platform == "win32":
-            script = (
-                "Add-Type -AssemblyName Microsoft.VisualBasic;"
-                "[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile("
-                f"'{target}',"
-                "'OnlyErrorDialogs','SendToRecycleBin')"
-            )
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode == 0:
-                return
-            log.warning("Lixeira indisponível (%s); removendo direto.", result.stderr.strip())
-
-        if target.is_dir():
-            import shutil
-
-            shutil.rmtree(target)
-        else:
-            target.unlink()
+        move_to_trash(target)

@@ -1,10 +1,11 @@
-# Ferramentas de build ignoradas pelo Git
+# Artefatos de build
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
 build/
 dist/
+*.spec.bak
 
 # Capturas e configs temporárias geradas por tools/smoke_gui.py
 scratch/
@@ -13,3 +14,16 @@ scratch-*
 # Ambiente virtual
 .venv/
 venv/
+
+# Ícones e CSS gerados por tools/ — versionados de propósito, porque quem baixa
+# o repositório não deve precisar do Pillow só para rodar o app. As entradas
+# abaixo existem para quem preferir gerar localmente sem poluir o git status.
+*.icns.gerado
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+

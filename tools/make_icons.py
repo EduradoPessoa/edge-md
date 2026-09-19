@@ -41,6 +41,12 @@ CANONICAL_SIZE = 512
 #: 16 na bandeja, 32 na barra de tarefas, 256 no Explorador em ícones grandes.
 ICO_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 
+#: Resoluções do .icns, que o macOS exige dentro do bundle.
+#:
+#: Precisa ir até 1024: é o tamanho que o Finder usa na visualização em
+#: galeria. Sem ele, o ícone aparece menor que os vizinhos.
+ICNS_SIZES = (16, 32, 64, 128, 256, 512, 1024)
+
 #: Abaixo deste tamanho o ícone usa a variante sem a assinatura "EdgeMD".
 #: Em 32 px ou menos o texto vira mancha cinza e só suja o desenho; sem ele, o
 #: "#" e a fita ficam maiores e continuam reconhecíveis. É prática comum em
@@ -367,6 +373,24 @@ def main() -> int:
     print(f"gerado   : {ico_path.relative_to(ROOT)} ({len(ICO_SIZES)} resoluções, "
           f"{ico_path.stat().st_size / 1024:.0f} KB, "
           f"{'com' if small is not None else 'sem'} variante simplificada)")
+
+    # O .icns é exigido pelo bundle do macOS. Gerado aqui, e não só no macOS,
+    # para o repositório já trazer o arquivo pronto — quem empacota não precisa
+    # ter o Pillow nem rodar este script antes.
+    icns_path = RESOURCES / "edgemd.icns"
+    try:
+        # A variante simplificada não é usada aqui: o macOS não tem bandeja de
+        # 16 px, e o ícone do Finder é sempre grande o bastante para a
+        # assinatura ser legível.
+        icon.resize((1024, 1024), Image.LANCZOS).save(
+            icns_path, format="ICNS", sizes=[(size, size) for size in ICNS_SIZES]
+        )
+        print(f"gerado   : {icns_path.relative_to(ROOT)} ({len(ICNS_SIZES)} resoluções, "
+              f"{icns_path.stat().st_size / 1024:.0f} KB)")
+    except (OSError, ValueError) as exc:
+        # Não é fatal: o bundle do macOS funciona sem ícone, só fica genérico.
+        print(f"AVISO    : não foi possível gerar o .icns ({exc})")
+
     return 0
 
 

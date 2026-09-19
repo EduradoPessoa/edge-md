@@ -1,4 +1,4 @@
-﻿"""Testes de inserção de link, imagem e emoji no editor e na janela.
+"""Testes de inserção de link, imagem e emoji no editor e na janela.
 
 Cobre o que a lógica pura não alcança: o texto que sai no documento, o efeito
 no histórico de desfazer, e as ações da barra de ferramentas.

@@ -1,4 +1,4 @@
-﻿"""Desenho dos ícones das ações, em SVG.
+"""Desenho dos ícones das ações, em SVG.
 
 Ficam como dados em Python, e não como arquivos ``.svg`` soltos, pelo mesmo
 motivo que o ícone do app é desenhado em ``icons.py``: a cor precisa vir do

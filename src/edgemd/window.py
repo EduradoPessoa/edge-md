@@ -1,4 +1,4 @@
-﻿"""Janela principal: abas, sidebar, preview compartilhado e menus.
+"""Janela principal: abas, sidebar, preview compartilhado e menus.
 
 Sobre o preview único: cada ``QWebEngineView`` traz um compositor próprio, e um
 por aba faria a memória crescer rápido demais. Como só uma aba aparece por vez,
@@ -33,6 +33,7 @@ from PyQt6.QtGui import QTextCursor
 
 from edgemd import APP_NAME, __version__, icon_shapes
 from edgemd.config import DEFAULT_VIEW_MODE, AppConfig, editing_available
+from edgemd.shell import reveal_in_file_manager
 from edgemd.editor_tab import FILE_FILTER, EditorTab
 from edgemd.emoji_picker import EmojiPicker
 from edgemd.image_insert import FILE_FILTER as IMAGE_FILE_FILTER
@@ -46,7 +47,7 @@ from edgemd.preview import PreviewView
 from edgemd.render import LARGE_FILE_BYTES, MarkdownRenderer
 from edgemd.safety import guarded_slot
 from edgemd.sidebar import Sidebar
-from edgemd.theme import apply_app_theme, colors as theme_colors
+from edgemd.theme import apply_app_theme, colors as theme_colors, system_theme
 from edgemd.tray import TrayIcon
 
 log = logging.getLogger(__name__)
@@ -1353,24 +1354,12 @@ class MainWindow(QMainWindow):
         return self.config.theme
 
     def _system_theme(self) -> str:
-        """Lê o tema claro/escuro do Windows.
+        """Tema claro/escuro configurado no sistema operacional.
 
-        A chave ``AppsUseLightTheme`` vale 0 para escuro e 1 para claro. Como o
-        app é majoritariamente escuro por padrão, qualquer falha de leitura cai
-        para escuro em vez de claro.
+        A detecção em si vive em ``theme.system_theme``, que sabe consultar o
+        registro no Windows, o ``defaults`` no macOS e o ``gsettings`` no Linux.
         """
-        try:
-            import winreg
-
-            with winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER,
-                r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-            ) as key:
-                value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
-                return "light" if int(value) == 1 else "dark"
-        except (OSError, ImportError, ValueError):
-            return "dark"
-
+        return system_theme()
     @property
     def _theme(self) -> str:
         return getattr(self, "_current_theme", "dark")
@@ -1683,53 +1672,57 @@ class MainWindow(QMainWindow):
     # Associação de arquivos
     # ==================================================================
     def register_association(self) -> None:
-        from edgemd import file_association
         from edgemd.paths import launcher_command
 
         launcher = launcher_command()
+        plataforma = association.platform_label()
 
         if is_frozen():
-            detail = f"Executável:\n{launcher[0]}"
+            detail = f"Aplicativo:\n{launcher[0]}"
         else:
             detail = (
                 "Rodando do código-fonte:\n"
-                f"{launcher[0]}\n{launcher[1]}\n\n"
-                "O clique duplo vai abrir o app por este caminho. Se você mover "
-                "a pasta do projeto, rode esta opção de novo."
+                + "\n".join(launcher)
+                + "\n\nO clique duplo vai abrir o app por este caminho. Se você "
+                "mover a pasta do projeto, rode esta opção de novo."
             )
 
+        # O texto de cada plataforma é bem diferente — registro no Windows,
+        # arquivo .desktop no Linux, bundle no macOS —, e o usuário costuma
+        # achar que "não funcionou" quando na verdade o sistema funciona de
+        # outro jeito. Por isso o diálogo mostra o texto do sistema atual.
         answer = QMessageBox.question(
             self,
-            "Associar arquivos .md",
-            "Isto registra o EdgeMD para arquivos "
-            + ", ".join(file_association.EXTENSIONS)
-            + ".\n\n"
-            "A gravação é feita só para o seu usuário (HKCU), sem pedir "
-            "administrador, e não altera a configuração de outros usuários.\n\n"
-            f"{detail}\n\nContinuar?",
+            f"Associar arquivos .md no {plataforma}",
+            f"Isto associa {association.extension_list()} ao EdgeMD.\n\n"
+            f"{association.instructions()}\n\n{detail}\n\nContinuar?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
 
-        make_default = (
-            QMessageBox.question(
-                self,
-                "Programa padrão",
-                "Tornar o EdgeMD o programa padrão ao dar clique duplo "
-                "num .md?\n\n"
-                "Escolher “Não” adiciona o app em “Abrir com”, sem mexer na "
-                "associação que você já usa.",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
+        # No macOS quem decide se pode haver padrão é o bundle; perguntar não
+        # faz sentido lá.
+        make_default = True
+        if plataforma != "macOS":
+            make_default = (
+                QMessageBox.question(
+                    self,
+                    "Programa padrão",
+                    "Tornar o EdgeMD o programa padrão ao dar clique duplo "
+                    "num .md?\n\n"
+                    "Escolher “Não” adiciona o app em “Abrir com”, sem mexer na "
+                    "associação que você já usa.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                == QMessageBox.StandardButton.Yes
             )
-            == QMessageBox.StandardButton.Yes
-        )
 
         try:
-            file_association.register(launcher, make_default=make_default)
-        except file_association.AssociationError as exc:
+            association.register(launcher, make_default=make_default)
+        except association.AssociationError as exc:
             QMessageBox.critical(self, "Falha ao associar", str(exc))
             return
         except OSError as exc:
@@ -1752,13 +1745,12 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Associação concluída", message)
 
     def unregister_association(self) -> None:
-        from edgemd import file_association
 
         answer = QMessageBox.question(
             self,
             "Desfazer associação",
             "Remover o registro do EdgeMD para arquivos .md?\n\n"
-            "Se o app for o padrão, o Windows volta a perguntar com o que abrir.",
+            f"Se o app for o padrão, o {association.platform_label()} volta a perguntar com o que abrir.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -1766,8 +1758,8 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            file_association.unregister()
-        except (file_association.AssociationError, OSError) as exc:
+            association.unregister()
+        except (association.AssociationError, OSError) as exc:
             QMessageBox.critical(self, "Falha ao desfazer", str(exc))
             return
         QMessageBox.information(self, "Pronto", "Associações removidas.")
@@ -1777,7 +1769,7 @@ class MainWindow(QMainWindow):
             self,
             f"Sobre o {APP_NAME}",
             f"<h3>{APP_NAME} {__version__}</h3>"
-            "<p>Leitor e editor de Markdown para Windows.</p>"
+            f"<p>Leitor e editor de Markdown para {association.platform_label()}.</p>"
             "<p>Renderização via Chromium (Qt WebEngine), Markdown com "
             "markdown-it-py, realce com Pygments.<br>"
             "Diagramas com Mermaid e fórmulas com KaTeX, ambos locais — "
@@ -1965,7 +1957,7 @@ class MainWindow(QMainWindow):
             self.open_paths(files)
 
     def changeEvent(self, event: QEvent) -> None:  # noqa: N802 - assinatura do Qt
-        """Acompanha a troca de tema do Windows, quando configurado assim."""
+        """Acompanha a troca de tema do sistema, quando configurado assim."""
         if (
             event.type() in _THEME_CHANGE_EVENTS
             and self.config.theme_follows_system

@@ -22,8 +22,13 @@ do QSS, e sem ele o tema escuro sairia pela metade.
 
 from __future__ import annotations
 
+import logging
+import shutil
+import sys
 from dataclasses import asdict, dataclass
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 THEMES = ("light", "dark")
 DEFAULT_THEME = "dark"
@@ -823,9 +828,10 @@ def qt_palette(theme: str) -> Any:
 def apply_app_theme(app: Any, theme: str) -> str:
     """Aplica o tema em toda a interface. Devolve o tema efetivamente usado.
 
-    ``Fusion`` é obrigatório aqui: o estilo nativo do Windows ignora boa parte
-    do QSS, e sem ele os menus e a barra de ferramentas continuariam claros num
-    tema escuro — que era justamente o defeito relatado.
+    ``Fusion`` é obrigatório aqui: os estilos nativos (o do Windows, o do macOS)
+    ignoram boa parte do QSS, e sem ele os menus e a barra de ferramentas
+    continuariam no visual do sistema dentro de um tema escuro — que era
+    justamente o defeito relatado quando o tema só alcançava o preview.
     """
     palette_name = theme if theme in THEMES else DEFAULT_THEME
 
@@ -833,6 +839,72 @@ def apply_app_theme(app: Any, theme: str) -> str:
     app.setPalette(qt_palette(palette_name))
     app.setStyleSheet(qt_stylesheet(palette_name))
     return palette_name
+
+
+def system_theme() -> str:
+    """Tema claro/escuro configurado no sistema operacional.
+
+    Cada sistema guarda isso num lugar diferente, e nenhum tem uma API estável
+    em Python puro:
+
+    * **Windows**: ``AppsUseLightTheme`` no registro (0 = escuro).
+    * **macOS**: ``AppleInterfaceStyle``; a chave só existe no modo escuro, e a
+      ausência dela é o sinal de que está claro.
+    * **Linux**: a preferência do GNOME por ``gsettings``. Em outros ambientes
+      não há consulta padronizada, e a queda é o escuro — que é o padrão do app.
+
+    Qualquer falha cai para escuro de propósito: ler errado e abrir no claro um
+    app cuja identidade visual é escura incomoda mais do que o contrário.
+    """
+    try:
+        if sys.platform == "win32":
+            return _system_theme_windows()
+        if sys.platform == "darwin":
+            return _system_theme_macos()
+        return _system_theme_linux()
+    except Exception:  # noqa: BLE001 - detecção nunca pode impedir a abertura
+        log.debug("Não foi possível detectar o tema do sistema.", exc_info=True)
+        return DEFAULT_THEME
+
+
+def _system_theme_windows() -> str:
+    import winreg
+
+    with winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+    ) as chave:
+        valor, _ = winreg.QueryValueEx(chave, "AppsUseLightTheme")
+    return "light" if int(valor) == 1 else "dark"
+
+
+def _system_theme_macos() -> str:
+    import subprocess
+
+    resultado = subprocess.run(
+        ["defaults", "read", "-g", "AppleInterfaceStyle"],
+        capture_output=True, text=True, check=False, timeout=10,
+    )
+    # A chave não existe no modo claro, e aí o comando falha — o que já é a
+    # resposta: claro.
+    return "dark" if "Dark" in resultado.stdout else "light"
+
+
+def _system_theme_linux() -> str:
+    import subprocess
+
+    if shutil.which("gsettings") is None:
+        return DEFAULT_THEME
+
+    resultado = subprocess.run(
+        ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
+        capture_output=True, text=True, check=False, timeout=10,
+    )
+    if "dark" in resultado.stdout.lower():
+        return "dark"
+    if "light" in resultado.stdout.lower() or "default" in resultado.stdout.lower():
+        return "light"
+    return DEFAULT_THEME
 
 
 def as_dict(theme: str) -> dict[str, str]:

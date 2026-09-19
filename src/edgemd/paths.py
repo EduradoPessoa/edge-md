@@ -45,21 +45,37 @@ def icon_path(name: str) -> Path:
 
 
 def launcher_command() -> list[str]:
-    """Comando que o Windows deve executar para abrir um arquivo .md.
+    """Comando que o sistema deve executar para abrir um arquivo .md.
 
-    Em bundle, o próprio executável. No código-fonte, o ``pythonw.exe`` que
-    está rodando agora mais o ``run.pyw``. Usamos ``pythonw`` para não abrir
-    console.
+    Em bundle, o próprio executável. No código-fonte, o interpretador em
+    execução mais o ``run.pyw``.
+
+    No Windows usamos o ``pythonw.exe`` para não abrir janela de console. Nos
+    outros sistemas o interpretador é o mesmo, e o ``run.pyw`` continua
+    servindo: a extensão só importa para o Windows associá-la ao interpretador
+    certo.
     """
     if is_frozen():
         return [str(Path(sys.executable).resolve())]
 
-    # sys.executable aponta para python.exe mesmo sob pythonw em alguns casos,
-    # então derivamos o pythonw ao lado dele.
     exe = Path(sys.executable).resolve()
-    pythonw = exe.with_name("pythonw.exe")
-    if not pythonw.exists():
-        pythonw = exe
+
+    if sys.platform == "win32":
+        # sys.executable aponta para python.exe mesmo sob pythonw em alguns
+        # casos, então derivamos o pythonw ao lado dele.
+        pythonw = exe.with_name("pythonw.exe")
+        if pythonw.exists():
+            exe = pythonw
 
     run_pyw = Path(__file__).resolve().parents[2] / "run.pyw"
-    return [str(pythonw), str(run_pyw)]
+    return [str(exe), str(run_pyw)]
+
+
+def icon_for_platform() -> Path:
+    """Arquivo de ícone adequado à plataforma.
+
+    O ``.ico`` é o formato que o Windows entende no registro; no Linux e no
+    macOS o PNG é o que serve.
+    """
+    nome = "edgemd.ico" if sys.platform == "win32" else "edgemd.png"
+    return icon_path(nome)
