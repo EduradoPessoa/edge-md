@@ -95,6 +95,14 @@ chmod 0755 "$APPDIR/AppRun"
 # ---------------------------------------------------------------------------
 SAIDA="$DESTINO/EdgeMD-${VERSAO}-x86_64.AppImage"
 
+# Devolve o caminho do appimagetool em stdout, e SÓ o caminho.
+#
+# Todo o resto vai para stderr de propósito. Quem chama faz
+# FERRAMENTA="$(buscar_appimagetool)", e a substituição de comando captura tudo
+# que a função imprime em stdout — inclusive mensagens de progresso. Com o
+# "==> Baixando" em stdout, o valor de FERRAMENTA virava duas linhas e o bash
+# tentava executar "==> Baixando o appimagetool" como se fosse um programa
+# (exit 127).
 buscar_appimagetool() {
     if command -v appimagetool >/dev/null 2>&1; then
         command -v appimagetool
@@ -104,13 +112,15 @@ buscar_appimagetool() {
         echo "$DESTINO/appimagetool"
         return
     fi
-    echo "==> Baixando o appimagetool"
+
+    echo "==> Baixando o appimagetool" >&2
     local url="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
     if command -v curl >/dev/null 2>&1; then
         curl -sSL -o "$DESTINO/appimagetool" "$url"
     elif command -v wget >/dev/null 2>&1; then
         wget -qO "$DESTINO/appimagetool" "$url"
     else
+        echo "    sem curl nem wget para baixar" >&2
         return 1
     fi
     chmod +x "$DESTINO/appimagetool"
