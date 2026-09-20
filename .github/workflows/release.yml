@@ -210,6 +210,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 traz o histórico e as tags, que o passo do changelog
+      # precisa para listar os commits desde a versão anterior.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           path: artefatos
@@ -247,14 +253,40 @@ jobs:
           done
           exit $faltando
 
+      # O corpo é montado aqui em vez de usar generate_release_notes: as duas
+      # coisas não se somam — com generate_release_notes ligado, o GitHub gera o
+      # corpo e o body_path é ignorado, e a Release sai só com o link do
+      # changelog. Montando à mão, o texto das notas e a lista de commits
+      # convivem.
+      - name: Montar o corpo da Release
+        run: |
+          cp .github/RELEASE_NOTES.md corpo.md
+
+          {
+            echo
+            echo "## Commits desta versão"
+            echo
+            anterior="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+            if [ -n "$anterior" ]; then
+              echo "Desde \`${anterior}\`:"
+              echo
+              git log --no-merges --pretty='- %s — %h' "${anterior}..${GITHUB_REF_NAME}"
+            else
+              echo "Primeira versão publicada. Histórico completo:"
+              echo
+              git log --no-merges --pretty='- %s — %h' "${GITHUB_REF_NAME}" | head -60
+            fi
+            echo
+            echo "**Changelog completo**: https://github.com/${GITHUB_REPOSITORY}/commits/${GITHUB_REF_NAME}"
+          } >> corpo.md
+
+          echo "Corpo montado: $(wc -l < corpo.md) linhas"
+
       - name: Publicar o Release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          # O corpo vem do repositório, para o texto ser revisável em vez de
-          # ficar enterrado no YAML do workflow. O changelog é anexado embaixo.
-          body_path: .github/RELEASE_NOTES.md
-          generate_release_notes: true
+          body_path: corpo.md
           # Sem isto, um glob que não casa nada publica uma Release vazia em
           # silêncio — foi exatamente o defeito da primeira tag v0.1.0.
           fail_on_unmatched_files: true
