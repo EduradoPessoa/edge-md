@@ -112,7 +112,7 @@ def instalador_windows(versao: str) -> bool:
                 break
 
     if iscc is None:
-        print("  Inno Setup não encontrado; pulando o instalador.")
+        print("  Inno Setup não encontrado; pulando o instalador .exe.")
         print("  Instale de: https://jrsoftware.org/isdl.php")
         print(f"  Depois rode: iscc {RAIZ / 'packaging' / 'windows' / 'edgemd.iss'}")
         return False
@@ -120,6 +120,30 @@ def instalador_windows(versao: str) -> bool:
     return executar(
         [iscc, str(RAIZ / "packaging" / "windows" / "edgemd.iss")],
         descricao="Gerando o instalador com Inno Setup",
+    )
+
+
+def pacote_msix(versao: str) -> bool:
+    """Gera e assina o pacote MSIX.
+
+    Não entra no ``--instalador`` comum de propósito: exige o makeappx e o
+    signtool do Windows SDK, que não vêm instalados, e produz um pacote que só
+    instala depois de o certificado ser confiado na máquina. Quem quer MSIX
+    pede por ele com ``--msix``.
+    """
+    script = RAIZ / "packaging" / "windows" / "build_msix.ps1"
+    if not script.is_file():
+        print("  build_msix.ps1 não encontrado; pulando o MSIX.")
+        return False
+
+    return executar(
+        [
+            "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", str(script),
+            "-Versao", versao,
+            "-SelfSigned",
+        ],
+        descricao="Gerando e assinando o pacote MSIX",
     )
 
 
@@ -152,6 +176,14 @@ def main() -> int:
         help="além do bundle, gera o instalador da plataforma atual",
     )
     parser.add_argument(
+        "--msix",
+        action="store_true",
+        help=(
+            "no Windows, gera também o pacote MSIX assinado com um certificado "
+            "autoassinado (exige makeappx e signtool do Windows SDK)"
+        ),
+    )
+    parser.add_argument(
         "--sem-limpar",
         action="store_true",
         help="aproveita o build/ e o dist/ existentes",
@@ -180,6 +212,13 @@ def main() -> int:
             instalador_macos(args.versao)
         else:
             instaladores_linux(args.versao)
+
+    if args.msix:
+        print()
+        if sys.platform != "win32":
+            print("  --msix só se aplica ao Windows; ignorando.")
+        else:
+            pacote_msix(args.versao)
 
     print("\n==> Concluído. Artefatos em dist/")
     return 0

@@ -300,9 +300,16 @@ O resultado vai para `dist/`:
 | Sistema | Bundle | Instalador | Tamanho |
 |---|---|---|---|
 | Windows | `dist/edgemd/` | `EdgeMD-0.1.0-setup.exe` (Inno Setup) | 128 MB |
+| Windows | — | `EdgeMD-0.1.0-x64.msix`, pacote moderno | 199 MB |
 | Linux | `dist/edgemd/` | `edgemd_0.1.0_amd64.deb` | 163 MB |
 | Linux | — | `EdgeMD-0.1.0-x86_64.AppImage`, portátil | 191 MB |
 | macOS | `dist/EdgeMD.app` | `EdgeMD-0.1.0.dmg` | 166 MB |
+
+O MSIX é pedido à parte, porque exige ferramentas que não vêm instaladas:
+
+```powershell
+python packaging\build.py --instalador --msix
+```
 
 O tamanho vem do Chromium que vai junto: cerca de 500 MB descompactados. É o
 preço da renderização fiel — Mermaid, KaTeX e o CSS do preview funcionam sem
@@ -317,6 +324,59 @@ Para conferir o que foi empacotado sem instalar nada:
 ```bash
 python tools/inspect_deb.py dist/linux/edgemd_0.1.0_amd64.deb  # lê o .deb por dentro
 python tools/capture_exe.py                                    # abre o .exe e fotografa
+```
+
+### Qual instalador do Windows usar
+
+Os dois funcionam; a diferença é o que cada um exige.
+
+| | `setup.exe` (Inno Setup) | `x64.msix` |
+|---|---|---|
+| Assinatura | não precisa | **obrigatória** |
+| Administrador | não | só para confiar no certificado |
+| Instalação | copia para `%LOCALAPPDATA%` | gerenciada pelo Windows |
+| Desinstalação | desinstalador próprio | Configurações → Aplicativos |
+| Associação de `.md` | gravada no registro | declarada no manifesto |
+
+**Na prática, use o `.exe`.** O MSIX é melhor em teoria — instalação e remoção
+limpas, sem deixar rastro no registro, e associação declarativa em vez de
+gravada —, mas o Windows só instala um MSIX cujo certificado seja confiável, e
+isso não tem como contornar.
+
+### Sobre o MSIX
+
+O pacote sai assinado com um certificado **autoassinado**, que vai junto no
+arquivo `EdgeMD-dev.cer`. Para instalar, é preciso confiar nesse certificado uma
+vez, o que exige administrador:
+
+```powershell
+Import-Certificate -FilePath EdgeMD-dev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage EdgeMD-0.1.0-x64.msix
+```
+
+Sem esse passo o Windows recusa com o erro `0x800B0109`. Confiar apenas no
+usuário atual **não basta**: testei `CurrentUser\TrustedPeople` e
+`CurrentUser\Root`, e o AppX recusa os dois — ele exige confiança em nível de
+máquina. Para distribuir sem esse passo seria preciso um certificado de code
+signing de uma autoridade certificadora, que é pago.
+
+Existe um terceiro caminho, só para desenvolvimento: com o Modo Desenvolvedor
+ligado, dá para registrar a pasta do pacote sem assinatura nenhuma, o que é
+útil para conferir a associação declarada no manifesto:
+
+```powershell
+Add-AppxPackage -Register dist\msix\arvore\AppxManifest.xml
+```
+
+O empacotamento precisa do `makeappx` e do `signtool`, que vêm no Windows SDK. O
+caminho leve é o pacote NuGet, com 21 MB em vez de mais de 1 GB:
+
+```powershell
+$url = 'https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/10.0.26100.1742'
+Invoke-WebRequest $url -OutFile bt.zip
+Expand-Archive bt.zip bt
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\edgemd-sdktools"
+Copy-Item bt\bin\10.0.26100.0\x64\*.exe "$env:LOCALAPPDATA\edgemd-sdktools"
 ```
 
 ### Pelo GitHub Actions
@@ -346,7 +406,8 @@ sua plataforma.
 
 | | Como funciona | Onde fica |
 |---|---|---|
-| **Windows** | Registro, em três camadas: ProgID, `OpenWithProgids` e `Capabilities` | `HKEY_CURRENT_USER` — sem administrador |
+| **Windows** (instalador .exe) | Registro, em três camadas: ProgID, `OpenWithProgids` e `Capabilities` | `HKEY_CURRENT_USER` — sem administrador |
+| **Windows** (pacote MSIX) | Declarada no `AppxManifest.xml`; o registro é virtualizado | dentro do pacote |
 | **Linux** | Arquivo `.desktop` com `MimeType=` + ícones hicolor + `xdg-mime` | `~/.local/share` e `~/.config/mimeapps.list` |
 | **macOS** | `Info.plist` do bundle, lido pelo LaunchServices | dentro do `EdgeMD.app` |
 

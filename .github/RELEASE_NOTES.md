@@ -7,10 +7,24 @@ edição com um clique.
 
 | Sistema | Arquivo | Como instalar |
 |---|---|---|
-| **Windows** 10/11 | `EdgeMD-0.1.0-setup.exe` | Execute o instalador. Ele instala só para o seu usuário — não pede administrador. |
+| **Windows** 10/11 | `EdgeMD-0.1.0-setup.exe` | Execute o instalador. Instala só para o seu usuário — não pede administrador. |
+| **Windows** — pacote MSIX | `EdgeMD-0.1.0-x64.msix` + `EdgeMD-dev.cer` | Confie no certificado (exige administrador) e depois instale. Veja abaixo. |
 | **Linux** — Debian, Ubuntu, Mint | `edgemd_0.1.0_amd64.deb` | `sudo apt install ./edgemd_0.1.0_amd64.deb` |
 | **Linux** — qualquer distro | `EdgeMD-0.1.0-x86_64.AppImage` | `chmod +x EdgeMD-0.1.0-x86_64.AppImage` e execute |
 | **macOS** 11+ | `EdgeMD-0.1.0.dmg` | Abra e arraste o EdgeMD para Aplicativos |
+
+No Windows, **prefira o `.exe`**: não exige assinatura nem administrador. O MSIX
+dá instalação e desinstalação mais limpas, mas o Windows só instala um pacote
+cujo certificado seja confiável na máquina — e o deste release é autoassinado,
+de desenvolvimento:
+
+```powershell
+Import-Certificate -FilePath EdgeMD-dev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Add-AppxPackage EdgeMD-0.1.0-x64.msix
+```
+
+Sem esse passo o Windows recusa com o erro `0x800B0109`. Confiar apenas no
+usuário atual não basta: o AppX exige confiança em nível de máquina.
 
 Os arquivos têm entre 128 e 191 MB porque carregam o Chromium inteiro dentro
 (≈500 MB descompactados). É o preço da renderização fiel: diagramas Mermaid,

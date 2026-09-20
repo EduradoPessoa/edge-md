@@ -68,6 +68,39 @@ def is_supported() -> bool:
 #: Mantido para quem ja consultava a constante no import.
 SUPPORTED = sys.platform == "win32"
 
+#: Código devolvido pelo Windows quando o processo não pertence a um pacote.
+#: O valor é ``APPMODEL_ERROR_NO_PACKAGE``, da API de modelo de aplicativo.
+APPMODEL_ERROR_NO_PACKAGE = 15700
+
+
+def is_packaged() -> bool:
+    """True quando o app roda de um pacote MSIX/AppX.
+
+    Muda tudo na associação de arquivos: um pacote MSIX declara os tipos que
+    abre no próprio manifesto, e o Windows mantém isso. O registro de um
+    processo empacotado é **virtualizado** — uma gravação em ``HKCU`` some
+    dentro do pacote e não tem efeito nenhum sobre o sistema, então o app
+    pareceria ter funcionado sem ter feito nada.
+
+    A consulta é feita a cada chamada, e não em cache no import: assim os testes
+    podem trocar o resultado, e o custo é uma chamada de sistema.
+    """
+    if sys.platform != "win32":
+        return False
+
+    try:
+        # A função devolve o tamanho necessário e falha com
+        # APPMODEL_ERROR_NO_PACKAGE quando o processo não é empacotado.
+        tamanho = ctypes.c_uint32(0)
+        resultado = ctypes.windll.kernel32.GetCurrentPackageFullName(  # type: ignore[attr-defined]
+            ctypes.byref(tamanho), None
+        )
+        return resultado != APPMODEL_ERROR_NO_PACKAGE
+    except (AttributeError, OSError):
+        # GetCurrentPackageFullName só existe do Windows 8 em diante; em
+        # sistemas mais antigos a resposta é simplesmente "não é pacote".
+        return False
+
 
 def _require_support() -> None:
     if winreg is None:
@@ -172,10 +205,27 @@ def status(
     launcher: list[str] | None = None, icon_file: str | Path | None = None
 ) -> AssociationStatus:
     """Lê o estado atual das associações."""
-    if not SUPPORTED:
+    if not is_supported():
         return AssociationStatus(
             supported=False, is_default=False, in_open_with=False,
             detail="Registro do Windows indisponível nesta plataforma.",
+        )
+
+    if is_packaged():
+        # Num pacote MSIX não há o que consultar no registro: quem declara os
+        # tipos de arquivo é o AppxManifest, e é o Windows que mantém a lista.
+        return AssociationStatus(
+            supported=True,
+            # O app aparece em "Abrir com" por causa da declaração no
+            # manifesto, e não por nada que a gente tenha gravado.
+            in_open_with=True,
+            is_default=False,
+            command=None,
+            registered_command=None,
+            detail=(
+                "Pacote MSIX: o Windows gerencia a associação pelo manifesto. "
+                "Para tornar padrão, use Abrir com → Escolher outro aplicativo."
+            ),
         )
 
     root = winreg.HKEY_CURRENT_USER
@@ -221,6 +271,19 @@ def register(
 ) -> AssociationStatus:
     """Grava as associações do app. Devolve o estado resultante."""
     _require_support()
+
+    if is_packaged():
+        # Num pacote MSIX o registro é virtualizado por processo: a gravação
+        # ficaria dentro do pacote e o sistema não veria nada. Recusar com
+        # explicação é melhor do que gravar e relatar sucesso.
+        raise AssociationError(
+            "O EdgeMD está instalado como pacote MSIX, e nesse formato a "
+            "associação de arquivos vem declarada no próprio pacote.\n\n"
+            "O Windows já mantém a lista, então não há nada a registrar. "
+            "Para tornar o EdgeMD o programa padrão, use botão direito no "
+            "arquivo → Abrir com → Escolher outro aplicativo."
+        )
+
     root = winreg.HKEY_CURRENT_USER
     command = build_command(launcher, FILE_PLACEHOLDER)
     icon = str(icon_file) if icon_file else _icon_from_launcher(launcher)
@@ -291,6 +354,18 @@ def register(
 def unregister() -> None:
     """Remove tudo o que :func:`register` criou."""
     _require_support()
+
+    if is_packaged():
+        # Não há o que desfazer: a associação vive no manifesto do pacote, e o
+        # Windows a remove junto com ele. Apagar as chaves de ProgID seria
+        # inofensivo, mas passar a impressão de que "desassociou" seria falso.
+        raise AssociationError(
+            "O EdgeMD está instalado como pacote MSIX, e a associação de "
+            "arquivos faz parte do pacote.\n\n"
+            "Para removê-la, desinstale o EdgeMD em Configurações → "
+            "Aplicativos → Aplicativos instalados."
+        )
+
     root = winreg.HKEY_CURRENT_USER
 
     for extension in EXTENSIONS:
@@ -334,6 +409,18 @@ def notify_shell() -> None:
 
 
 def instructions() -> str:
+    if is_packaged():
+        return (
+            "O EdgeMD está instalado como pacote MSIX, e nesse formato a "
+            "associação de arquivos é declarada no próprio pacote — o Windows "
+            "a cria e a mantém, sem nada gravado no registro.\n\n"
+            "O app já aparece em \"Abrir com\". Para torná-lo padrão, use botão "
+            "direito no arquivo → Abrir com → Escolher outro aplicativo, e "
+            "marque \"Sempre usar este aplicativo\".\n\n"
+            "Desinstalar o EdgeMD em Configurações → Aplicativos remove a "
+            "associação junto."
+        )
+
     return (
         "As associações ficam em HKEY_CURRENT_USER, sem pedir administrador.\n\n"
         "Para tornar o EdgeMD padrão, use botão direito no arquivo → "

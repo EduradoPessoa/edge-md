@@ -83,6 +83,86 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------
+  # Windows: pacote MSIX, além do instalador .exe
+  #
+  # Por que os dois formatos: o .exe instala sem assinatura e sem
+  # administrador, então é o caminho padrão. O MSIX dá instalação e
+  # desinstalação limpas, mas o Windows SÓ instala um MSIX cujo certificado
+  # seja confiável na máquina — verificado na prática, e não há como contornar.
+  #
+  # Por isso o trabalho publica o pacote junto com o certificado: quem quiser
+  # usar o MSIX confia no certificado uma vez (exige administrador) e depois
+  # instala normalmente. Para distribuir sem esse passo seria preciso um
+  # certificado de code signing de uma autoridade certificadora.
+  # ---------------------------------------------------------------------
+  windows-msix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Baixar bibliotecas de diagrama e fórmula
+        run: python tools/fetch_vendor.py
+
+      - name: Gerar ícones
+        run: python tools/make_icons.py
+
+      - name: Gerar o bundle
+        run: python -m PyInstaller edgemd.spec --noconfirm --clean
+
+      - name: Descobrir a versão
+        id: versao
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSAO="${GITHUB_REF_NAME#v}"
+          else
+            VERSAO="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          fi
+          echo "valor=${VERSAO}" >> "$GITHUB_OUTPUT"
+          echo "Versão: ${VERSAO}"
+
+      - name: Instalar as ferramentas do SDK (makeappx e signtool)
+        shell: pwsh
+        # O pacote NuGet traz só as ferramentas (~21 MB) em vez do SDK completo
+        # (>1 GB), que é o que o runner precisa para empacotar e assinar.
+        run: |
+          $versao = "10.0.26100.1742"
+          $url = "https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/$versao"
+          Invoke-WebRequest -Uri $url -OutFile bt.zip -UseBasicParsing
+          Expand-Archive bt.zip bt
+          New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\edgemd-sdktools" | Out-Null
+          Copy-Item "bt\bin\$versao\x64\*.exe" "$env:LOCALAPPDATA\edgemd-sdktools"
+          & "$env:LOCALAPPDATA\edgemd-sdktools\makeappx.exe" /? | Select-Object -First 1
+
+      - name: Gerar e assinar o MSIX
+        shell: pwsh
+        # Autoassinado: o certificado gerado aqui é de desenvolvimento, e vai
+        # junto no artefato para quem for instalar poder confiar nele.
+        run: |
+          .\packaging\windows\build_msix.ps1 `
+            -Versao "${{ steps.versao.outputs.valor }}" `
+            -SelfSigned
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EdgeMD-msix
+          path: |
+            dist/msix/*.msix
+            dist/msix/*.cer
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------
   # Linux: .deb e AppImage
   # ---------------------------------------------------------------------
   linux:
@@ -206,7 +286,7 @@ jobs:
   # Release
   # ---------------------------------------------------------------------
   publicar:
-    needs: [windows, linux, macos]
+    needs: [windows, windows-msix, linux, macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -239,6 +319,8 @@ jobs:
           faltando=0
           for padrao in \
             "artefatos/EdgeMD-windows/installer/*.exe" \
+            "artefatos/EdgeMD-msix/*.msix" \
+            "artefatos/EdgeMD-msix/*.cer" \
             "artefatos/EdgeMD-linux/*.deb" \
             "artefatos/EdgeMD-linux/*.AppImage" \
             "artefatos/EdgeMD-macos/*.dmg"
@@ -292,6 +374,8 @@ jobs:
           fail_on_unmatched_files: true
           files: |
             artefatos/EdgeMD-windows/installer/*.exe
+            artefatos/EdgeMD-msix/*.msix
+            artefatos/EdgeMD-msix/*.cer
             artefatos/EdgeMD-linux/*.deb
             artefatos/EdgeMD-linux/*.AppImage
             artefatos/EdgeMD-macos/*.dmg

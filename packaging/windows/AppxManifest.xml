@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifesto do pacote MSIX do EdgeMD.
+
+  Este arquivo e um modelo: o build_msix.ps1 substitui os marcadores {{...}}
+  antes de empacotar. Os valores que mudam por versao ficam aqui, e nao
+  espalhados pelo script.
+
+  Sobre a associacao de arquivos: no MSIX ela e DECLARATIVA, nao vai para o
+  registro. E o bloco uap:FileTypeAssociation abaixo que faz o Windows oferecer
+  o EdgeMD em "Abrir com". Por isso o app, quando roda empacotado, nao tenta
+  gravar nada no registro — e o proprio Windows que mantem isso, e uma gravacao
+  em HKCU ficaria virtualizada dentro do pacote, invisivel para o sistema.
+
+  Sobre o Publisher: ele precisa ser IDENTICO ao assunto (Subject) do
+  certificado que assina o pacote. Se divergir, a instalacao falha com
+  "certificado nao corresponde ao publisher" — e a mensagem nao diz qual dos
+  dois esta errado.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 rescap">
+
+  <!-- O Version precisa ter quatro campos: 0.1.0 vira 0.1.0.0. -->
+  <Identity
+    Name="{{IDENTITY_NAME}}"
+    Publisher="{{PUBLISHER}}"
+    Version="{{VERSION}}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>EdgeMD</DisplayName>
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY}}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Leitor e editor de Markdown com diagramas e formulas</Description>
+  </Properties>
+
+  <Dependencies>
+    <!-- 17763 e o Windows 10 1809, a versao mais antiga que aceita MSIX com
+         runFullTrust de forma confiavel. -->
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.17763.0"
+      MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="pt-BR" />
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <!-- EntryPoint Windows.FullTrustApplication: o EdgeMD e um aplicativo de
+         area de trabalho completo, nao um app UWP. Sem isso o Windows trataria
+         o pacote como UWP e o Chromium nao conseguiria iniciar. -->
+    <Application
+      Id="EdgeMD"
+      Executable="edgemd\edgemd.exe"
+      EntryPoint="Windows.FullTrustApplication">
+
+      <uap:VisualElements
+        DisplayName="EdgeMD"
+        Description="Leitor e editor de Markdown"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- A associacao de arquivos do MSIX. Declarar aqui coloca o EdgeMD na
+             lista de "Abrir com" sem gravar nada no registro.
+
+             Observacao: isto NAO torna o app padrao. O Windows exige que o
+             usuario escolha, com botao direito -> Abrir com -> Escolher outro
+             aplicativo. Nenhum manifesto consegue assumir o padrao sozinho. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="edgemd">
+            <uap:DisplayName>Documento Markdown</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.md</uap:FileType>
+              <uap:FileType>.markdown</uap:FileType>
+              <uap:FileType>.mdown</uap:FileType>
+              <uap:FileType>.mkd</uap:FileType>
+              <uap:FileType>.mkdn</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- runFullTrust e obrigatoria para um aplicativo de area de trabalho
+         empacotado: e o que permite ao processo rodar fora da caixa do UWP,
+         com acesso ao sistema de arquivos que o usuario escolher. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
