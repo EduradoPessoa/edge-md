@@ -214,13 +214,52 @@ jobs:
         with:
           path: artefatos
 
+      # O download-artifact achata os caminhos: o que foi enviado como
+      # dist/linux/x.deb chega como EdgeMD-linux/x.deb, sem o "dist". Os globs
+      # abaixo refletem isso — e a conferência existe porque o
+      # softprops/action-gh-release NÃO falha quando o glob não casa nada: ele
+      # publica uma Release sem anexo e reporta sucesso. Foi o que aconteceu na
+      # primeira tag, e só se percebe olhando a Release.
+      - name: Conferir os artefatos antes de publicar
+        run: |
+          echo "Árvore recebida:"
+          find artefatos -maxdepth 2 -type f | sort | sed 's/^/  /'
+
+          # nullglob faz o glob que não casa virar lista vazia, em vez de virar
+          # o próprio padrão literal — com `ls`, um padrão sem resultado ainda
+          # imprime erro no stderr e complica a checagem sob `set -e`.
+          shopt -s nullglob
+
+          faltando=0
+          for padrao in \
+            "artefatos/EdgeMD-windows/installer/*.exe" \
+            "artefatos/EdgeMD-linux/*.deb" \
+            "artefatos/EdgeMD-linux/*.AppImage" \
+            "artefatos/EdgeMD-macos/*.dmg"
+          do
+            arquivos=( $padrao )
+            if [ "${#arquivos[@]}" -eq 0 ]; then
+              echo "::error::nenhum arquivo para o padrão: $padrao"
+              faltando=1
+            else
+              echo "ok (${#arquivos[@]}): ${arquivos[*]}"
+            fi
+          done
+          exit $faltando
+
       - name: Publicar o Release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
+          # O corpo vem do repositório, para o texto ser revisável em vez de
+          # ficar enterrado no YAML do workflow. O changelog é anexado embaixo.
+          body_path: .github/RELEASE_NOTES.md
           generate_release_notes: true
+          # Sem isto, um glob que não casa nada publica uma Release vazia em
+          # silêncio — foi exatamente o defeito da primeira tag v0.1.0.
+          fail_on_unmatched_files: true
           files: |
-            artefatos/EdgeMD-windows/dist/installer/*.exe
-            artefatos/EdgeMD-linux/dist/linux/*.deb
-            artefatos/EdgeMD-linux/dist/linux/*.AppImage
-            artefatos/EdgeMD-macos/dist/macos/*.dmg
+            artefatos/EdgeMD-windows/installer/*.exe
+            artefatos/EdgeMD-linux/*.deb
+            artefatos/EdgeMD-linux/*.AppImage
+            artefatos/EdgeMD-macos/*.dmg
