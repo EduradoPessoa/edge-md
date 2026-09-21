@@ -132,33 +132,68 @@ jobs:
           echo "valor=${VERSAO}" >> "$GITHUB_OUTPUT"
           echo "Versão: ${VERSAO}"
 
-      - name: Instalar as ferramentas do SDK (makeappx e signtool)
+      - name: Garantir as ferramentas do SDK (makeappx e signtool)
         shell: pwsh
-        # O pacote NuGet traz só as ferramentas (~21 MB) em vez do SDK completo
-        # (>1 GB), que é o que o runner precisa para empacotar e assinar.
+        # O runner do GitHub já traz o Windows SDK instalado, com o makeappx
+        # dentro. Preferimos ele ao pacote NuGet por um motivo concreto: o
+        # makeappx extraído do NuGet depende de um runtime do VC++ que o runner
+        # não tem na versão certa, e falha na largada com
         #
-        # O caminho interno NÃO segue a versão do pacote: a versão 10.0.26100.1742
-        # extrai em bin\10.0.26100.0\x64. Por isso procuramos o makeappx em vez
-        # de montar o caminho — assim uma atualização do pacote não quebra isto.
+        #   The application has failed to start because its side-by-side
+        #   configuration is incorrect.
+        #
+        # A instalação completa do SDK traz o manifesto que resolve isso. O
+        # NuGet fica só como reserva, para quem roda fora do runner.
         run: |
-          $versao = "10.0.26100.1742"
-          $url = "https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/$versao"
-          Invoke-WebRequest -Uri $url -OutFile bt.zip -UseBasicParsing
-          Expand-Archive bt.zip bt
-
-          $makeappx = Get-ChildItem bt -Recurse -Filter makeappx.exe |
-            Where-Object { $_.FullName -match '\\x64\\' } |
-            Select-Object -First 1
-          if (-not $makeappx) { throw "makeappx.exe não encontrado no pacote NuGet" }
-
           $destino = "$env:LOCALAPPDATA\edgemd-sdktools"
           New-Item -ItemType Directory -Force $destino | Out-Null
-          Copy-Item $makeappx.FullName $destino
-          Copy-Item (Join-Path $makeappx.DirectoryName "signtool.exe") $destino
 
-          Write-Host "Instalado em $destino :"
-          Get-ChildItem $destino | ForEach-Object { "  $($_.Name)  $([math]::Round($_.Length/1KB)) KB" }
-          & "$destino\makeappx.exe" | Select-Object -First 1
+          function Procurar-NoSdk([string]$nome) {
+            $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+            if (-not (Test-Path $kits)) { return $null }
+            # A pasta mais recente primeiro: o SDK guarda uma por versão.
+            foreach ($pasta in (Get-ChildItem $kits -Directory | Sort-Object Name -Descending)) {
+              $caminho = Join-Path $pasta.FullName "x64\$nome.exe"
+              if (Test-Path $caminho) { return $caminho }
+            }
+            return $null
+          }
+
+          $makeappx = Procurar-NoSdk "makeappx"
+          $signtool = Procurar-NoSdk "signtool"
+
+          if ($makeappx -and $signtool) {
+            Write-Host "Windows SDK encontrado no runner:"
+            Write-Host "  makeappx: $makeappx"
+            Write-Host "  signtool: $signtool"
+            Copy-Item $makeappx $destino -Force
+            Copy-Item $signtool $destino -Force
+          }
+          else {
+            Write-Host "SDK não encontrado; baixando o pacote NuGet (~21 MB)"
+            $versao = "10.0.26100.1742"
+            $url = "https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/$versao"
+            Invoke-WebRequest -Uri $url -OutFile bt.zip -UseBasicParsing
+            Expand-Archive bt.zip bt
+
+            # O caminho interno não segue a versão do pacote: a 10.0.26100.1742
+            # extrai em bin\10.0.26100.0\x64. Procuramos em vez de montar.
+            $achado = Get-ChildItem bt -Recurse -Filter makeappx.exe |
+              Where-Object { $_.FullName -match '\\x64\\' } |
+              Select-Object -First 1
+            if (-not $achado) { throw "makeappx.exe não encontrado no pacote NuGet" }
+            Copy-Item $achado.FullName $destino -Force
+            Copy-Item (Join-Path $achado.DirectoryName "signtool.exe") $destino -Force
+          }
+
+          # Confere que o executável realmente roda, em vez de descobrir isso
+          # lá na frente com um erro obscuro de empacotamento.
+          $teste = & "$destino\makeappx.exe" 2>&1 | Select-Object -First 1
+          $codigo = $LASTEXITCODE
+          if ($codigo -ne 0 -and $teste -notmatch 'MakeAppx') {
+            throw "makeappx.exe não executa (código $codigo): $teste"
+          }
+          Write-Host "  makeappx respondeu: $teste"
 
       - name: Gerar e assinar o MSIX
         shell: pwsh
