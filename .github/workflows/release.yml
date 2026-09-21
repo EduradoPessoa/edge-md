@@ -136,14 +136,29 @@ jobs:
         shell: pwsh
         # O pacote NuGet traz só as ferramentas (~21 MB) em vez do SDK completo
         # (>1 GB), que é o que o runner precisa para empacotar e assinar.
+        #
+        # O caminho interno NÃO segue a versão do pacote: a versão 10.0.26100.1742
+        # extrai em bin\10.0.26100.0\x64. Por isso procuramos o makeappx em vez
+        # de montar o caminho — assim uma atualização do pacote não quebra isto.
         run: |
           $versao = "10.0.26100.1742"
           $url = "https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/$versao"
           Invoke-WebRequest -Uri $url -OutFile bt.zip -UseBasicParsing
           Expand-Archive bt.zip bt
-          New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\edgemd-sdktools" | Out-Null
-          Copy-Item "bt\bin\$versao\x64\*.exe" "$env:LOCALAPPDATA\edgemd-sdktools"
-          & "$env:LOCALAPPDATA\edgemd-sdktools\makeappx.exe" /? | Select-Object -First 1
+
+          $makeappx = Get-ChildItem bt -Recurse -Filter makeappx.exe |
+            Where-Object { $_.FullName -match '\\x64\\' } |
+            Select-Object -First 1
+          if (-not $makeappx) { throw "makeappx.exe não encontrado no pacote NuGet" }
+
+          $destino = "$env:LOCALAPPDATA\edgemd-sdktools"
+          New-Item -ItemType Directory -Force $destino | Out-Null
+          Copy-Item $makeappx.FullName $destino
+          Copy-Item (Join-Path $makeappx.DirectoryName "signtool.exe") $destino
+
+          Write-Host "Instalado em $destino :"
+          Get-ChildItem $destino | ForEach-Object { "  $($_.Name)  $([math]::Round($_.Length/1KB)) KB" }
+          & "$destino\makeappx.exe" | Select-Object -First 1
 
       - name: Gerar e assinar o MSIX
         shell: pwsh
