@@ -501,13 +501,32 @@ else {
 if ($Certificate) {
     if (-not $signtool) { throw "signtool.exe nao encontrado; nao da para assinar" }
 
+    # O signtool escreve mensagens em stderr mesmo quando da tudo certo — o
+    # "SignTool Error:" da conferencia da cadeia e o caso mais visivel. Com o
+    # $ErrorActionPreference = "Stop" deste script, isso vira excecao terminal e
+    # interrompe o script antes de a mensagem poder ser avaliada. Por isso as
+    # duas chamadas ao signtool rodam com a preferencia baixada.
+    function Invoke-SignTool {
+        param([string[]]$Argumentos)
+        $anterior = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            return (& $signtool @Argumentos 2>&1 | Out-String)
+        }
+        finally {
+            $ErrorActionPreference = $anterior
+        }
+    }
+
     Write-Host "==> Assinando"
     $argumentos = @("sign", "/fd", "SHA256", "/f", $Certificate)
     if ($Password) { $argumentos += @("/p", $Password) }
     $argumentos += $pacote
 
-    & $signtool @argumentos
-    if ($LASTEXITCODE -ne 0) { throw "signtool falhou com codigo $LASTEXITCODE" }
+    $saidaSign = Invoke-SignTool $argumentos
+    if ($saidaSign -notmatch 'Successfully signed|Number of files successfully Signed') {
+        throw "o signtool nao conseguiu assinar:`n$($saidaSign.Trim())"
+    }
     Write-Host "    assinado"
 
     # A conferencia distingue dois casos que o signtool reporta igual no codigo
@@ -518,20 +537,21 @@ if ($Certificate) {
     #   * qualquer outro erro — assinatura ausente, arquivo alterado depois de
     #     assinar, algoritmo invalido. Isso e falha de verdade.
     Write-Host "==> Conferindo a assinatura"
-    $saidaVerify = & $signtool verify /pa /v $pacote 2>&1
-    $texto = $saidaVerify -join "`n"
+    $texto = Invoke-SignTool @("verify", "/pa", "/v", $pacote)
 
     $cadeiaNaoConfiavel = $texto -match 'terminated in a root|not trusted'
-    $assinaturaOk = $texto -match 'Issued to:'
+    $temAssinatura = $texto -match 'Issued to:'
+    $aprovada = $texto -match 'Successfully verified'
 
-    if ($assinaturaOk -and $cadeiaNaoConfiavel) {
-        Write-Host "    assinatura presente; cadeia autoassinada (esperado sem certificado de AC)" -ForegroundColor Yellow
+    if ($aprovada) {
+        Write-Host "    verificada" -ForegroundColor Green
+    }
+    elseif ($temAssinatura -and $cadeiaNaoConfiavel) {
+        Write-Host "    assinatura presente; cadeia autoassinada, que e o esperado" -ForegroundColor Yellow
+        Write-Host "    sem certificado de autoridade certificadora, /pa nao aprova a cadeia" -ForegroundColor Yellow
         if ($TrustMachine) {
             Write-Host "    ATENCAO: -TrustMachine foi usado e a cadeia ainda nao valida" -ForegroundColor Yellow
         }
-    }
-    elseif ($texto -match 'Successfully verified') {
-        Write-Host "    verificada" -ForegroundColor Green
     }
     else {
         throw "a assinatura do pacote nao pode ser conferida:`n$($texto.Trim())"
