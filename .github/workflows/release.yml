@@ -177,12 +177,16 @@ jobs:
 
       - name: Gerar e assinar o MSIX
         shell: pwsh
-        # Autoassinado: o certificado gerado aqui é de desenvolvimento, e vai
-        # junto no artefato para quem for instalar poder confiar nele.
+        # -TrustMachine porque o runner e descartavel e roda elevado: confiar no
+        # certificado na maquina permite ao signtool aprovar a cadeia, o que da
+        # uma verificacao de verdade em vez de um aviso. Numa maquina de
+        # trabalho isso nao deve acontecer sem querer, por isso e um
+        # interruptor explicito.
         run: |
           .\packaging\windows\build_msix.ps1 `
             -Versao "${{ steps.versao.outputs.valor }}" `
-            -SelfSigned
+            -SelfSigned `
+            -TrustMachine
 
       - uses: actions/upload-artifact@v4
         with:

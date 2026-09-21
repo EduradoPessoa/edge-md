@@ -43,7 +43,14 @@ param(
     [string]$Publisher = "CN=EdgeMD",
     [string]$PublisherDisplay = "Eduardo Mauricio Pessoa de Souza",
     [string]$IdentityName = "io.github.eduradopessoa.edgemd",
-    [string]$OutputDirectory = "dist\msix"
+    [string]$OutputDirectory = "dist\msix",
+    # Confia no certificado de desenvolvimento tambem na maquina, e nao so no
+    # usuario. Exige administrador, e existe por dois motivos: a instalacao de
+    # um MSIX pelo AppX so aceita certificado confiavel em nivel de maquina, e
+    # o signtool verify so aprova a cadeia se o certificado estiver numa raiz
+    # confiavel. Num runner de CI, que e descartavel, isso e inofensivo; numa
+    # maquina de trabalho, nao deve acontecer sem querer.
+    [switch]$TrustMachine
 )
 
 $ErrorActionPreference = "Stop"
@@ -161,11 +168,23 @@ function Test-SdkTool {
 
     if (-not $Caminho -or -not (Test-Path $Caminho)) { return $false }
 
+    # O $ErrorActionPreference = "Stop" deste script faz o PowerShell tratar
+    # qualquer escrita em stderr de um programa externo como erro terminal.
+    # O makeappx escreve o uso em stdout, mas o signtool escreve em stderr —
+    # então sem baixar a preferência aqui, o signtool seria reprovado mesmo
+    # funcionando. Foi o que aconteceu na primeira versão desta função.
+    $anterior = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     try {
-        $saida = & $Caminho 2>&1 | Select-Object -First 1
+        # Out-String junta stdout e stderr: qual dos dois traz o texto do uso
+        # varia entre as ferramentas do SDK.
+        $saida = & $Caminho 2>&1 | Out-String
     }
     catch {
         return $false
+    }
+    finally {
+        $ErrorActionPreference = $anterior
     }
 
     return ($saida -match 'MakeAppx|SignTool|Usage')
@@ -427,21 +446,48 @@ if ($SelfSigned) {
         $publico, $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
 
     Write-Host "    confiando no certificado (TrustedPeople)"
-    $lojaConfianca = New-Object System.Security.Cryptography.X509Certificates.X509Store("TrustedPeople", "CurrentUser")
-    $lojaConfianca.Open("ReadWrite")
-    try {
-        $jaConfiavel = $lojaConfianca.Certificates |
-            Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
-        if (-not $jaConfiavel) {
-            $lojaConfianca.Add($cert)
-            Write-Host "    adicionado a TrustedPeople"
+    $lojas = @(@{ Nome = "TrustedPeople"; Escopo = "CurrentUser" })
+
+    if ($TrustMachine) {
+        # Nivel de maquina. Faz diferenca por dois motivos, os dois verificados
+        # na pratica: o AppX so instala um MSIX cujo certificado seja confiavel
+        # na maquina (CurrentUser da erro 0x800B0109), e o signtool verify so
+        # aprova a cadeia se o certificado estiver numa raiz confiavel.
+        $admin = ([Security.Principal.WindowsPrincipal] `
+            [Security.Principal.WindowsIdentity]::GetCurrent()
+        ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+        if (-not $admin) {
+            throw "-TrustMachine exige administrador, e o processo atual nao esta elevado."
         }
-        else {
-            Write-Host "    ja estava em TrustedPeople"
-        }
+        $lojas += @{ Nome = "TrustedPeople"; Escopo = "LocalMachine" }
+        $lojas += @{ Nome = "Root"; Escopo = "LocalMachine" }
     }
-    finally {
-        $lojaConfianca.Close()
+
+    foreach ($loja in $lojas) {
+        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store(
+            $loja.Nome, $loja.Escopo)
+        $store.Open("ReadWrite")
+        try {
+            $jaConfiavel = $store.Certificates |
+                Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
+            if (-not $jaConfiavel) {
+                $store.Add($cert)
+                Write-Host "    adicionado a $($loja.Escopo)\$($loja.Nome)"
+            }
+            else {
+                Write-Host "    ja estava em $($loja.Escopo)\$($loja.Nome)"
+            }
+        }
+        catch {
+            # A loja Root do usuario pede confirmacao interativa, e num contexto
+            # sem interface isso vira excecao. Nao e fatal: sem ela a assinatura
+            # continua valida, so a conferencia da cadeia falha.
+            Write-Host "    nao foi possivel gravar em $($loja.Escopo)\$($loja.Nome): $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        finally {
+            $store.Close()
+        }
     }
 
     $Certificate = $pfx
@@ -462,10 +508,34 @@ if ($Certificate) {
 
     & $signtool @argumentos
     if ($LASTEXITCODE -ne 0) { throw "signtool falhou com codigo $LASTEXITCODE" }
+    Write-Host "    assinado"
 
+    # A conferencia distingue dois casos que o signtool reporta igual no codigo
+    # de saida, mas que sao bem diferentes:
+    #
+    #   * a cadeia nao termina numa raiz confiavel — esperado num certificado
+    #     autoassinado, e nao significa que a assinatura esteja errada;
+    #   * qualquer outro erro — assinatura ausente, arquivo alterado depois de
+    #     assinar, algoritmo invalido. Isso e falha de verdade.
     Write-Host "==> Conferindo a assinatura"
-    & $signtool verify /pa /v $pacote | Select-String -Pattern "Successfully verified|Hash of file|Issued to" |
-        ForEach-Object { "    $_" }
+    $saidaVerify = & $signtool verify /pa /v $pacote 2>&1
+    $texto = $saidaVerify -join "`n"
+
+    $cadeiaNaoConfiavel = $texto -match 'terminated in a root|not trusted'
+    $assinaturaOk = $texto -match 'Issued to:'
+
+    if ($assinaturaOk -and $cadeiaNaoConfiavel) {
+        Write-Host "    assinatura presente; cadeia autoassinada (esperado sem certificado de AC)" -ForegroundColor Yellow
+        if ($TrustMachine) {
+            Write-Host "    ATENCAO: -TrustMachine foi usado e a cadeia ainda nao valida" -ForegroundColor Yellow
+        }
+    }
+    elseif ($texto -match 'Successfully verified') {
+        Write-Host "    verificada" -ForegroundColor Green
+    }
+    else {
+        throw "a assinatura do pacote nao pode ser conferida:`n$($texto.Trim())"
+    }
 }
 else {
     Write-Host ""
