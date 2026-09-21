@@ -132,68 +132,48 @@ jobs:
           echo "valor=${VERSAO}" >> "$GITHUB_OUTPUT"
           echo "Versão: ${VERSAO}"
 
-      - name: Garantir as ferramentas do SDK (makeappx e signtool)
+      - name: Conferir as ferramentas do SDK (makeappx e signtool)
         shell: pwsh
-        # O runner do GitHub já traz o Windows SDK instalado, com o makeappx
-        # dentro. Preferimos ele ao pacote NuGet por um motivo concreto: o
-        # makeappx extraído do NuGet depende de um runtime do VC++ que o runner
-        # não tem na versão certa, e falha na largada com
+        # O runner do GitHub já traz o Windows SDK instalado, e é de lá que o
+        # build_msix.ps1 pega o makeappx e o signtool.
+        #
+        # A versão anterior deste passo COPIava os .exe para uma pasta local, e
+        # isso os quebrava: o makeappx depende de um assembly lado-a-lado que
+        # fica na pasta do SDK, então a cópia existe mas não inicia —
         #
         #   The application has failed to start because its side-by-side
         #   configuration is incorrect.
         #
-        # A instalação completa do SDK traz o manifesto que resolve isso. O
-        # NuGet fica só como reserva, para quem roda fora do runner.
+        # Agora nada é copiado: as ferramentas são usadas onde estão, e o
+        # script valida cada candidato executando-o antes de aceitar.
         run: |
-          $destino = "$env:LOCALAPPDATA\edgemd-sdktools"
-          New-Item -ItemType Directory -Force $destino | Out-Null
-
-          function Procurar-NoSdk([string]$nome) {
-            $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-            if (-not (Test-Path $kits)) { return $null }
-            # A pasta mais recente primeiro: o SDK guarda uma por versão.
-            foreach ($pasta in (Get-ChildItem $kits -Directory | Sort-Object Name -Descending)) {
-              $caminho = Join-Path $pasta.FullName "x64\$nome.exe"
-              if (Test-Path $caminho) { return $caminho }
-            }
-            return $null
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          if (-not (Test-Path $kits)) {
+            Write-Host "::warning::Windows SDK não encontrado; o passo do MSIX vai baixar o pacote NuGet"
+            exit 0
           }
 
-          $makeappx = Procurar-NoSdk "makeappx"
-          $signtool = Procurar-NoSdk "signtool"
+          Write-Host "Windows SDK presente em $kits :"
+          Get-ChildItem $kits -Directory | Sort-Object Name -Descending |
+            ForEach-Object { "  $($_.Name)" }
 
-          if ($makeappx -and $signtool) {
-            Write-Host "Windows SDK encontrado no runner:"
-            Write-Host "  makeappx: $makeappx"
-            Write-Host "  signtool: $signtool"
-            Copy-Item $makeappx $destino -Force
-            Copy-Item $signtool $destino -Force
-          }
-          else {
-            Write-Host "SDK não encontrado; baixando o pacote NuGet (~21 MB)"
-            $versao = "10.0.26100.1742"
-            $url = "https://www.nuget.org/api/v2/package/Microsoft.Windows.SDK.BuildTools/$versao"
-            Invoke-WebRequest -Uri $url -OutFile bt.zip -UseBasicParsing
-            Expand-Archive bt.zip bt
+          $makeappx = Get-ChildItem $kits -Directory | Sort-Object Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "x64\makeappx.exe" } |
+            Where-Object { Test-Path $_ } | Select-Object -First 1
 
-            # O caminho interno não segue a versão do pacote: a 10.0.26100.1742
-            # extrai em bin\10.0.26100.0\x64. Procuramos em vez de montar.
-            $achado = Get-ChildItem bt -Recurse -Filter makeappx.exe |
-              Where-Object { $_.FullName -match '\\x64\\' } |
-              Select-Object -First 1
-            if (-not $achado) { throw "makeappx.exe não encontrado no pacote NuGet" }
-            Copy-Item $achado.FullName $destino -Force
-            Copy-Item (Join-Path $achado.DirectoryName "signtool.exe") $destino -Force
+          if (-not $makeappx) {
+            Write-Host "::warning::makeappx.exe não encontrado no SDK; o passo do MSIX vai tentar o NuGet"
+            exit 0
           }
 
-          # Confere que o executável realmente roda, em vez de descobrir isso
-          # lá na frente com um erro obscuro de empacotamento.
-          $teste = & "$destino\makeappx.exe" 2>&1 | Select-Object -First 1
-          $codigo = $LASTEXITCODE
-          if ($codigo -ne 0 -and $teste -notmatch 'MakeAppx') {
-            throw "makeappx.exe não executa (código $codigo): $teste"
+          # Executar no lugar, e não copiado, é o que faz funcionar.
+          Write-Host "Verificando $makeappx"
+          $saida = & $makeappx 2>&1 | Select-Object -First 1
+          Write-Host "  resposta: $saida"
+          if ($saida -notmatch 'MakeAppx') {
+            Write-Host "::error::makeappx.exe não executa: $saida"
+            exit 1
           }
-          Write-Host "  makeappx respondeu: $teste"
 
       - name: Gerar e assinar o MSIX
         shell: pwsh

@@ -140,29 +140,72 @@ function New-EdgeMDCertificado {
     return $persistente
 }
 
-function Find-SdkTool {
-    param([string]$Nome)
-    $noPath = Get-Command $Nome -ErrorAction SilentlyContinue
-    if ($noPath) { return $noPath.Source }
+function Test-SdkTool {
+    <#
+    .SINOPSE
+        Confere que a ferramenta existe E executa.
 
-    $procurados = @(
-        (Join-Path $env:LOCALAPPDATA "edgemd-sdktools\$Nome.exe"),
-        "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\$Nome.exe",
-        "$env:ProgramFiles\Windows Kits\10\bin\x64\$Nome.exe"
-    )
+    .DESCRICAO
+        A checagem por presenca nao basta. O makeappx depende de um assembly
+        lado-a-lado que fica na pasta do SDK: copiar o .exe para outro lugar o
+        deixa presente e quebrado, e o erro so aparece quando ele e executado:
 
-    # Instalacoes do SDK guardam os binarios sob a versao do kit.
-    $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-    if (Test-Path $kits) {
-        Get-ChildItem $kits -Directory -ErrorAction SilentlyContinue |
-            Sort-Object Name -Descending |
-            ForEach-Object {
-                $procurados += (Join-Path $_.FullName "x64\$Nome.exe")
-            }
+            The application has failed to start because its side-by-side
+            configuration is incorrect.
+
+        Executar aqui e o que distingue "esta la" de "funciona". O makeappx sem
+        argumentos imprime o cabecalho e sai com codigo diferente de zero, o
+        que e esperado; o que reprova e nao conseguir iniciar.
+    #>
+    param([string]$Caminho)
+
+    if (-not $Caminho -or -not (Test-Path $Caminho)) { return $false }
+
+    try {
+        $saida = & $Caminho 2>&1 | Select-Object -First 1
+    }
+    catch {
+        return $false
     }
 
-    foreach ($caminho in $procurados) {
-        if ($caminho -and (Test-Path $caminho)) { return $caminho }
+    return ($saida -match 'MakeAppx|SignTool|Usage')
+}
+
+function Find-SdkTool {
+    param([string]$Nome)
+
+    # A ordem importa. O PATH vem primeiro porque foi o usuario que o montou.
+    # Em seguida as pastas do SDK, que e onde a ferramenta funciona: ela precisa
+    # dos assemblies que ficam ao lado. A pasta local vem por ultimo, porque um
+    # .exe copiado para la pode estar quebrado — foi o que aconteceu na CI, e
+    # por isso cada candidato e testado antes de ser aceito.
+    $candidatos = @()
+
+    $noPath = Get-Command $Nome -ErrorAction SilentlyContinue
+    if ($noPath) { $candidatos += $noPath.Source }
+
+    $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+    if (Test-Path $kits) {
+        # Da versao mais recente para a mais antiga.
+        Get-ChildItem $kits -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object { $candidatos += (Join-Path $_.FullName "x64\$Nome.exe") }
+    }
+    $candidatos += "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\$Nome.exe"
+    $candidatos += "$env:ProgramFiles\Windows Kits\10\bin\x64\$Nome.exe"
+    $candidatos += (Join-Path $env:LOCALAPPDATA "edgemd-sdktools\$Nome.exe")
+
+    foreach ($caminho in $candidatos) {
+        if (Test-SdkTool -Caminho $caminho) { return $caminho }
+    }
+
+    # Nenhum funcionou. Se algum existe mas nao roda, dizemos isso, porque a
+    # mensagem "nao encontrado" mandaria o usuario procurar no lugar errado.
+    $existeMasNaoRoda = $candidatos | Where-Object { $_ -and (Test-Path $_) }
+    if ($existeMasNaoRoda) {
+        Write-Host "    AVISO: $Nome existe mas nao executa em:" -ForegroundColor Yellow
+        $existeMasNaoRoda | Select-Object -First 3 | ForEach-Object { Write-Host "      $_" }
+        Write-Host "    (copia-lo para fora da pasta do SDK quebra os assemblies)" -ForegroundColor Yellow
     }
     return $null
 }
