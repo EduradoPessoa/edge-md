@@ -512,6 +512,14 @@ class MainWindow(QMainWindow):
             "Versões e reversão…", None, lambda: self.updates.show_versions(),
             tip="Ver as versões publicadas e instalar uma anterior",
         )
+        self.action_whats_new = make(
+            "Novidades desta versão", None, lambda: self.updates.show_whats_new(forced=True),
+            tip="Notas da versão em uso",
+        )
+        self.action_report = make(
+            "Reportar um problema…", None, lambda: self.updates.report_problem(),
+            tip="Abre o formulário no GitHub com versão e sistema preenchidos",
+        )
         self.action_auto_update = make(
             "Procurar atualizações ao iniciar", None, self._toggle_auto_update,
             tip="Consulta a lista de versões do GitHub ao abrir o app",
@@ -610,6 +618,9 @@ class MainWindow(QMainWindow):
         tools_menu.addAction(self.action_reveal_config)
 
         help_menu = bar.addMenu("A&juda")
+        help_menu.addAction(self.action_whats_new)
+        help_menu.addAction(self.action_report)
+        help_menu.addSeparator()
         help_menu.addAction(self.action_check_updates)
         help_menu.addAction(self.action_versions)
         help_menu.addAction(self.action_auto_update)
@@ -1929,6 +1940,9 @@ class MainWindow(QMainWindow):
             "markdown-it-py, realce com Pygments.<br>"
             "Diagramas com Mermaid e fórmulas com KaTeX, ambos locais — "
             "funciona offline.</p>"
+            f"<p><a href='https://github.com/EduradoPessoa/edge-md'>Código e downloads</a> · "
+            f"<a href='https://github.com/EduradoPessoa/edge-md/releases'>Versões</a> · "
+            f"<a href='https://github.com/EduradoPessoa/edge-md/issues/new/choose'>Reportar problema</a></p>"
             "<p style='color:#888'>Atalhos: Ctrl+N novo · Ctrl+O abrir · "
             "Ctrl+S salvar · Ctrl+T tema · Ctrl+Shift+P modos de exibição</p>",
         )

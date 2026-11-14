@@ -18,6 +18,7 @@ import hashlib
 import json
 import logging
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -27,7 +28,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 from urllib.error import URLError
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from edgemd import __version__
@@ -410,6 +411,45 @@ def launch_installer(path: Path) -> None:
         creationflags=flags,
         close_fds=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# Reportar problema
+# ---------------------------------------------------------------------------
+def describe_system() -> str:
+    """Nome do sistema no vocabulário do formulário de bug."""
+    if sys.platform == "win32":
+        try:
+            build = int(platform.version().split(".")[2])
+        except (IndexError, ValueError):
+            build = 0
+        return "Windows 11" if build >= 22000 else "Windows 10"
+    if sys.platform == "darwin":
+        return "macOS"
+    if sys.platform.startswith("linux"):
+        return "Linux"
+    return "Outro"
+
+
+def describe_install() -> str:
+    if not is_frozen():
+        return "Código-fonte (pip/python)"
+    if can_self_install():
+        return "Instalador .exe"
+    return "Outro"
+
+
+def report_problem_url() -> str:
+    """Abre o formulário de bug já com versão e sistema preenchidos.
+
+    Só vai no endereço o que o usuário vê na tela e pode apagar antes de enviar:
+    versão, sistema e forma de instalação. Nada de caminho, nome ou documento.
+    """
+    campos = {"template": "bug.yml", "versao": __version__, "sistema": describe_system()}
+    install = describe_install()
+    if install != "Outro":
+        campos["instalacao"] = install
+    return f"https://github.com/{REPO}/issues/new?" + urlencode(campos)
 
 
 # ---------------------------------------------------------------------------

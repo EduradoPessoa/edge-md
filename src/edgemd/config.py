@@ -325,6 +325,17 @@ class AppConfig:
     # -- modelos ----------------------------------------------------------
     # -- atualizações -----------------------------------------------------
     @property
+    def last_run_version(self) -> str:
+        """Última versão que o usuário abriu; vazio na primeira execução.
+
+        É o que permite mostrar "Novidades" uma vez depois de uma atualização."""
+        return str(self._settings.value("updates/last_run_version", ""))
+
+    @last_run_version.setter
+    def last_run_version(self, value: str) -> None:
+        self._settings.setValue("updates/last_run_version", str(value or ""))
+
+    @property
     def update_check_enabled(self) -> bool:
         """Procurar versão nova ao abrir. A única coisa que sai da máquina é a
         consulta à lista de Releases do GitHub; nenhum dado do usuário."""

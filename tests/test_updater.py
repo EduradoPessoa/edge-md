@@ -244,3 +244,25 @@ def test_nao_instala_sozinho_fora_do_exe_instalado():
 def test_should_check():
     assert should_check(0, now=updater.CHECK_INTERVAL_SECONDS)
     assert not should_check(100, now=101)
+
+
+# -- reportar problema -----------------------------------------------------
+def test_url_de_reporte_leva_so_versao_e_sistema():
+    from urllib.parse import parse_qs, urlparse
+
+    url = updater.report_problem_url()
+    q = parse_qs(urlparse(url).query)
+    assert urlparse(url).path == f"/{updater.REPO}/issues/new"
+    assert q["template"] == ["bug.yml"]
+    assert q["versao"] == [updater.__version__]
+    assert q["sistema"][0] in {"Windows 10", "Windows 11", "Linux", "macOS", "Outro"}
+    assert set(q) <= {"template", "versao", "sistema", "instalacao"}
+
+
+def test_campos_do_url_existem_no_formulario():
+    """Se alguém renomear um id no bug.yml, o preenchimento some em silêncio."""
+    from pathlib import Path
+
+    texto = (Path(__file__).resolve().parent.parent / ".github" / "ISSUE_TEMPLATE" / "bug.yml").read_text(encoding="utf-8")
+    for campo in ("versao", "sistema", "instalacao"):
+        assert f"id: {campo}" in texto
