@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/EduradoPessoa/edge-md/compare/v0.2.1...v0.2.2) (2026-11-14)
+
+
+### Correções
+
+* grava o corpo da Release depois de publicar ([#8](https://github.com/EduradoPessoa/edge-md/issues/8)) ([2bfda99](https://github.com/EduradoPessoa/edge-md/commit/2bfda996483a3caf7bbddda344f101fa24618149))
+
 ## [0.2.1](https://github.com/EduradoPessoa/edge-md/compare/v0.2.0...v0.2.1) (2026-11-14)
 
 
