@@ -1,0 +1,58 @@
+name: Relatar um bug
+description: Algo não funciona como esperado no EdgeMD
+labels: ["bug", "triagem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por relatar. Quanto mais exato o passo a passo, mais rápido o conserto.
+        No app, **Ajuda → Reportar problema** preenche versão e sistema para você.
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do EdgeMD
+      description: Em Ajuda → Sobre, ou `edgemd --version`.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema operacional
+      options: ["Windows 11", "Windows 10", "Linux", "macOS", "Outro"]
+    validations:
+      required: true
+  - type: dropdown
+    id: instalacao
+    attributes:
+      label: Como foi instalado
+      options: ["Instalador .exe", "MSIX", ".deb", "AppImage", ".dmg", "Código-fonte (pip/python)"]
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Abrir o arquivo ...
+        2. Clicar em ...
+        3. Ver o erro
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que você esperava
+    validations:
+      required: true
+  - type: textarea
+    id: atual
+    attributes:
+      label: O que aconteceu
+    validations:
+      required: true
+  - type: textarea
+    id: anexos
+    attributes:
+      label: Arquivo .md de exemplo, capturas ou log
+      description: Arraste arquivos aqui. Remova dados pessoais antes de anexar.
