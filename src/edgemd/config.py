@@ -323,6 +323,37 @@ class AppConfig:
         self._settings.setValue("files/recent", [])
 
     # -- modelos ----------------------------------------------------------
+    # -- atualizações -----------------------------------------------------
+    @property
+    def update_check_enabled(self) -> bool:
+        """Procurar versão nova ao abrir. A única coisa que sai da máquina é a
+        consulta à lista de Releases do GitHub; nenhum dado do usuário."""
+        return _as_bool(self._settings.value("updates/check_on_startup"), True)
+
+    @update_check_enabled.setter
+    def update_check_enabled(self, value: bool) -> None:
+        self._settings.setValue("updates/check_on_startup", bool(value))
+
+    @property
+    def update_last_check(self) -> float:
+        try:
+            return float(self._settings.value("updates/last_check", 0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    @update_last_check.setter
+    def update_last_check(self, value: float) -> None:
+        self._settings.setValue("updates/last_check", float(value))
+
+    @property
+    def update_skipped_version(self) -> str:
+        """Versão que o usuário pediu para não ser avisado de novo."""
+        return str(self._settings.value("updates/skipped_version", ""))
+
+    @update_skipped_version.setter
+    def update_skipped_version(self, value: str) -> None:
+        self._settings.setValue("updates/skipped_version", str(value or ""))
+
     @property
     def default_template(self) -> str:
         """Modelo usado pelo ``Ctrl+N``.

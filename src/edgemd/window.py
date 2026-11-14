@@ -170,6 +170,10 @@ class MainWindow(QMainWindow):
 
         # As ações vêm antes da interface: _apply_view_mode marca a ação do
         # modo ativo como selecionada.
+        # O controlador precisa existir antes das ações: elas o referenciam.
+        from edgemd.update_ui import UpdateController
+
+        self.updates = UpdateController(self, self.config)
         self._build_actions()
         self._build_ui()
         self._build_menus()
@@ -500,6 +504,20 @@ class MainWindow(QMainWindow):
         self.action_toggle_button_text.setCheckable(True)
         self.action_toggle_button_text.setChecked(self.config.toolbar_show_text)
         self.action_about = make("Sobre", None, self.show_about, icon="info")
+        self.action_check_updates = make(
+            "Verificar atualizações…", None, lambda: self.updates.check_now(), icon="refresh",
+            tip="Procurar uma versão nova no GitHub",
+        )
+        self.action_versions = make(
+            "Versões e reversão…", None, lambda: self.updates.show_versions(),
+            tip="Ver as versões publicadas e instalar uma anterior",
+        )
+        self.action_auto_update = make(
+            "Procurar atualizações ao iniciar", None, self._toggle_auto_update,
+            tip="Consulta a lista de versões do GitHub ao abrir o app",
+        )
+        self.action_auto_update.setCheckable(True)
+        self.action_auto_update.setChecked(self.config.update_check_enabled)
 
     def _build_menus(self) -> None:
         bar = self.menuBar()
@@ -592,6 +610,10 @@ class MainWindow(QMainWindow):
         tools_menu.addAction(self.action_reveal_config)
 
         help_menu = bar.addMenu("A&juda")
+        help_menu.addAction(self.action_check_updates)
+        help_menu.addAction(self.action_versions)
+        help_menu.addAction(self.action_auto_update)
+        help_menu.addSeparator()
         help_menu.addAction(self.action_about)
 
     def _build_toolbar(self) -> None:
@@ -1892,6 +1914,10 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Falha ao desfazer", str(exc))
             return
         QMessageBox.information(self, "Pronto", "Associações removidas.")
+
+    def _toggle_auto_update(self) -> None:
+        self.config.update_check_enabled = self.action_auto_update.isChecked()
+        self.config.sync()
 
     def show_about(self) -> None:
         QMessageBox.about(
