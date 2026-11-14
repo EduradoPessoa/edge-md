@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/EduradoPessoa/edge-md/compare/v0.2.0...v0.2.1) (2026-11-14)
+
+
+### Correções
+
+* usa macos-latest no empacotamento (macos-14 nao e suportado pela conta) ([#6](https://github.com/EduradoPessoa/edge-md/issues/6)) ([982a890](https://github.com/EduradoPessoa/edge-md/commit/982a890f5f3467887922bfefdf690b2dd4ffe955))
+
 ## [0.2.0](https://github.com/EduradoPessoa/edge-md/compare/v0.1.0...v0.2.0) (2026-11-14)
 
 
