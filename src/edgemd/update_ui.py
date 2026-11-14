@@ -133,6 +133,24 @@ class UpdateDialog(QDialog):
         self.accept()
 
 
+class WhatsNewDialog(QDialog):
+    """Notas de uma versão, mostradas depois de atualizar ou sob demanda."""
+
+    def __init__(self, release: Release, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(f"{APP_NAME} — novidades da {release.version}")
+        self.resize(560, 460)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(f"<h3>EdgeMD {release.version}</h3><p>Publicada em {release.date}.</p>"))
+        notas = QTextBrowser()
+        notas.setOpenExternalLinks(True)
+        notas.setMarkdown(release.body or "_Sem notas para esta versão._")
+        layout.addWidget(notas, 1)
+        botoes = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        botoes.rejected.connect(self.reject)
+        layout.addWidget(botoes)
+
+
 class VersionsDialog(QDialog):
     """Lista as versões publicadas e permite instalar qualquer uma (rollback)."""
 
@@ -240,6 +258,53 @@ class UpdateController(QObject):
 
     def show_versions(self) -> None:
         self._start_fetch(manual=True, then_versions=True)
+
+    def show_whats_new(self, *, forced: bool = False) -> None:
+        """Mostra as notas da versão em uso.
+
+        Automático (``forced=False``): só na primeira abertura depois de uma
+        atualização, e em silêncio se a rede falhar — nesse caso tenta de novo na
+        próxima abertura. Manual: sempre mostra, e avisa se falhar.
+        """
+        if os.environ.get("EDGEMD_NO_UPDATE_CHECK") and not forced:
+            return
+        anterior = self._config.last_run_version
+        if not forced:
+            if not anterior:  # primeira execução: nada a comparar
+                self._config.last_run_version = __version__
+                self._config.sync()
+                return
+            if not updater.is_newer(__version__, anterior):
+                self._config.last_run_version = __version__ if anterior != __version__ else anterior
+                self._config.sync()
+                return
+
+        thread = _FetchThread(self)
+        self._whats_new_thread = thread
+
+        def pronto(releases: list[Release]) -> None:
+            atual = next((r for r in releases if r.version == __version__), None)
+            if atual is None:
+                if forced:
+                    QMessageBox.information(
+                        self._window, "Novidades", f"Não há notas publicadas para a versão {__version__}."
+                    )
+                return
+            self._config.last_run_version = __version__
+            self._config.sync()
+            WhatsNewDialog(atual, self._window).exec()
+
+        def falhou(msg: str) -> None:
+            log.info("Notas da versão indisponíveis: %s", msg)
+            if forced:
+                QMessageBox.warning(self._window, "Novidades", msg or "Não foi possível consultar o GitHub.")
+
+        thread.done.connect(pronto)
+        thread.failed.connect(falhou)
+        thread.start()
+
+    def report_problem(self) -> None:
+        webbrowser.open(updater.report_problem_url())
 
     # -- consulta ---------------------------------------------------------
     def _start_fetch(self, *, manual: bool, then_versions: bool = False) -> None:

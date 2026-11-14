@@ -151,3 +151,21 @@ class TestUltimoDiretorio:
         config.last_directory = tmp_path
         config.last_directory = tmp_path / "nao-existe"
         assert config.last_directory == tmp_path
+
+
+class TestAtualizacao:
+    def test_padroes(self, config):
+        assert config.update_check_enabled is True
+        assert config.update_last_check == 0.0
+        assert config.update_skipped_version == ""
+        assert config.last_run_version == ""
+
+    def test_ida_e_volta(self, config):
+        config.update_check_enabled = False
+        config.update_skipped_version = "0.3.0"
+        config.last_run_version = "0.2.0"
+        config.update_last_check = 123.5
+        assert config.update_check_enabled is False
+        assert config.update_skipped_version == "0.3.0"
+        assert config.last_run_version == "0.2.0"
+        assert config.update_last_check == 123.5
