@@ -19,7 +19,7 @@
 
 #define AppName "EdgeMD"
 ; x-release-please-start-version
-#define AppVersion "0.2.1"
+#define AppVersion "0.2.2"
 ; x-release-please-end
 #define AppPublisher "Eduardo Maurício Pessoa de Souza"
 #define AppURL "https://github.com/EduradoPessoa/edge-md"
