@@ -218,6 +218,10 @@ class Application:
 
         if not (args.hidden or self.config.start_minimized):
             self.window.show()
+            # Depois de a janela estar de pé: a checagem roda numa thread, mas
+            # não deve competir com a abertura dos documentos. Em modo oculto
+            # (bandeja) não há checagem, para um diálogo não aparecer do nada.
+            QTimer.singleShot(5000, self.window.updates.check_on_startup)
 
         return self.app.exec()
 

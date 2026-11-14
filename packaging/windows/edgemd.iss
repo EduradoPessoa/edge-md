@@ -76,6 +76,9 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 ; "Abrir com" já funciona após a instalação; tornar padrão é escolha do
 ; usuário, e o app oferece isso no menu Ferramentas.
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; Atualização feita pelo próprio app: ele passa /RELAUNCH, e o instalador
+; (silencioso) abre o EdgeMD de novo ao terminar.
+Filename: "{app}\{#AppExeName}"; Flags: nowait; Check: DeveReabrir
 
 [Registry]
 ; --- Tipo de documento (ProgID) -------------------------------------------
@@ -112,6 +115,16 @@ Type: filesandordirs; Name: "{app}"
 procedure SHChangeNotify();
   external 'SHChangeNotify@shell32.dll stdcall';
   
+function DeveReabrir(): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/RELAUNCH') = 0 then
+      Result := True;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then

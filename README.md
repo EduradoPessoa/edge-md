@@ -277,6 +277,23 @@ arquivos locais não viajam junto. O resultado é autocontido.
 **PDF** usa a impressão do Chromium, em A4. A geração espera os diagramas e as
 fórmulas terminarem de desenhar — sem isso, sairiam em branco.
 
+## Atualização e reversão
+
+No instalador `.exe` do Windows, o app procura versão nova ao abrir (no máximo a cada 6 horas) e só instala se você confirmar:
+
+1. Consulta a lista de Releases deste repositório no GitHub. É a única coisa que sai da máquina; nenhum dado seu é enviado.
+2. Mostra as notas da versão. Você escolhe **Baixar e instalar**, **Lembrar depois** ou **Ignorar esta versão**.
+3. Baixa o instalador e confere o SHA-256 contra o `SHA256SUMS.txt` da mesma Release. Se não bater, o arquivo é descartado e nada roda.
+4. Fecha (pedindo para salvar o que estiver aberto), instala e reabre.
+
+**Ajuda → Versões e reversão…** lista todas as versões publicadas. Dá para instalar uma anterior se a atual deu problema; o app deixa de avisar da versão abandonada. O instalador mais recente e o anterior ficam em `%LOCALAPPDATA%\EdgeMD\updates`, o que permite voltar sem internet quando essa versão já passou por aqui.
+
+Desligar a checagem: **Ajuda → Procurar atualizações ao iniciar**. Pela variável `EDGEMD_NO_UPDATE_CHECK=1` também.
+
+MSIX, `.deb`, AppImage, `.dmg` e código-fonte não se atualizam sozinhos: o app só avisa e abre a página da versão.
+
+Limite conhecido: os instaladores ainda não têm assinatura de código. O SHA-256 detecta download corrompido, mas não substitui assinatura contra uma Release adulterada.
+
 ## Gerar o executável
 
 O PyInstaller **não compila para outra plataforma**: cada sistema empacota o
