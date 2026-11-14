@@ -406,3 +406,12 @@ jobs:
           # silêncio — foi exatamente o defeito da primeira tag v0.1.0.
           fail_on_unmatched_files: true
           files: publicar-arquivos/*
+
+      # O softprops reaproveita a Release criada pelo release-please e, nesse
+      # caminho, não aplica o body_path (verificado na v0.2.1: a Release saiu só
+      # com o changelog, sem a seção de downloads). Por isso o corpo é gravado
+      # explicitamente, depois de publicar.
+      - name: Gravar o corpo da Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${GITHUB_REF_NAME}" --notes-file corpo.md
