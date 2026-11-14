@@ -369,47 +369,40 @@ jobs:
           done
           exit $faltando
 
-      # O corpo é montado aqui em vez de usar generate_release_notes: as duas
-      # coisas não se somam — com generate_release_notes ligado, o GitHub gera o
-      # corpo e o body_path é ignorado, e a Release sai só com o link do
-      # changelog. Montando à mão, o texto das notas e a lista de commits
-      # convivem.
+      # O corpo da Release vem do release-please (changelog da versão), que já
+      # criou a Release em rascunho. Aqui só se acrescenta a seção de downloads.
       - name: Montar o corpo da Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cp .github/RELEASE_NOTES.md corpo.md
-
+          VERSAO="${GITHUB_REF_NAME#v}"
+          gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate \
+            --jq ".[] | select(.tag_name==\"${GITHUB_REF_NAME}\") | .body" > corpo.md
           {
             echo
-            echo "## Commits desta versão"
-            echo
-            anterior="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
-            if [ -n "$anterior" ]; then
-              echo "Desde \`${anterior}\`:"
-              echo
-              git log --no-merges --pretty='- %s — %h' "${anterior}..${GITHUB_REF_NAME}"
-            else
-              echo "Primeira versão publicada. Histórico completo:"
-              echo
-              git log --no-merges --pretty='- %s — %h' "${GITHUB_REF_NAME}" | head -60
-            fi
-            echo
-            echo "**Changelog completo**: https://github.com/${GITHUB_REPOSITORY}/commits/${GITHUB_REF_NAME}"
+            sed "s/{{VERSAO}}/${VERSAO}/g" .github/DOWNLOADS.md
           } >> corpo.md
-
           echo "Corpo montado: $(wc -l < corpo.md) linhas"
+
+      # Arquivos planos num só lugar, com os checksums. O atualizador do app
+      # baixa o SHA256SUMS.txt e confere o instalador contra ele.
+      - name: Reunir os arquivos e gerar o SHA256SUMS.txt
+        run: |
+          mkdir publicar-arquivos
+          cp artefatos/EdgeMD-windows/installer/*.exe \
+             artefatos/EdgeMD-msix/*.msix artefatos/EdgeMD-msix/*.cer \
+             artefatos/EdgeMD-linux/*.deb artefatos/EdgeMD-linux/*.AppImage \
+             artefatos/EdgeMD-macos/*.dmg publicar-arquivos/
+          (cd publicar-arquivos && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
       - name: Publicar o Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          # Publica de fato: o release-please criou a Release como rascunho
+          # justamente para ela só ficar visível depois de ter os anexos.
+          draft: false
           body_path: corpo.md
           # Sem isto, um glob que não casa nada publica uma Release vazia em
           # silêncio — foi exatamente o defeito da primeira tag v0.1.0.
           fail_on_unmatched_files: true
-          files: |
-            artefatos/EdgeMD-windows/installer/*.exe
-            artefatos/EdgeMD-msix/*.msix
-            artefatos/EdgeMD-msix/*.cer
-            artefatos/EdgeMD-linux/*.deb
-            artefatos/EdgeMD-linux/*.AppImage
-            artefatos/EdgeMD-macos/*.dmg
+          files: publicar-arquivos/*

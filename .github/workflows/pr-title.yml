@@ -1,0 +1,32 @@
+name: titulo-do-pr
+
+# O PR é integrado por squash, então o título vira a mensagem do commit na main
+# e é ele que o release-please lê para decidir a versão e montar o changelog.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            revert
+            docs
+            chore
+            ci
+            test
+            refactor
+            build
+          requireScope: false

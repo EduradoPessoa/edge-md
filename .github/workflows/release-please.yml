@@ -1,0 +1,36 @@
+name: release-please
+
+# A cada push na main, o release-please mantém um PR de release aberto com a
+# nova versão e o CHANGELOG. Ao fazer o merge desse PR ele cria a tag e uma
+# Release em rascunho; em seguida este workflow dispara o release.yml, que
+# compila os instaladores, anexa, gera o SHA256SUMS.txt e publica.
+#
+# O disparo é explícito (gh workflow run) porque tags e Releases criadas com o
+# GITHUB_TOKEN NÃO acionam outros workflows. workflow_dispatch é a exceção.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Disparar a compilação dos instaladores
+        if: ${{ steps.rp.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run release.yml -R "${{ github.repository }}" \
+            --ref "${{ steps.rp.outputs.tag_name }}"
