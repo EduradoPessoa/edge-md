@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/EduradoPessoa/edge-md/compare/v0.2.2...v0.2.3) (2026-11-14)
+
+
+### Correções
+
+* declara SHChangeNotify com os 4 parametros no instalador ([#10](https://github.com/EduradoPessoa/edge-md/issues/10)) ([2a6875a](https://github.com/EduradoPessoa/edge-md/commit/2a6875a2f5662eafb6e2a38839c281c957abeec9))
+
 ## [0.2.2](https://github.com/EduradoPessoa/edge-md/compare/v0.2.1...v0.2.2) (2026-11-14)
 
 
