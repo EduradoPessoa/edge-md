@@ -112,7 +112,9 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 // O Windows só relê as associações se for avisado. Sem isto, os ícones e o
 // programa padrão continuam desatualizados até o Explorer reiniciar.
-procedure SHChangeNotify();
+// A assinatura real tem 4 parâmetros. Declarada sem eles, a chamada gerava
+// "Access violation" no fim de toda instalação (visto no log de /LOG).
+procedure SHChangeNotify(wEventId: Integer; uFlags: Integer; dwItem1: Integer; dwItem2: Integer);
   external 'SHChangeNotify@shell32.dll stdcall';
   
 function DeveReabrir(): Boolean;
@@ -128,11 +130,11 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
-    SHChangeNotify();
+    SHChangeNotify($08000000, 0, 0, 0); // SHCNE_ASSOCCHANGED
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
-    SHChangeNotify();
+    SHChangeNotify($08000000, 0, 0, 0); // SHCNE_ASSOCCHANGED
 end;
