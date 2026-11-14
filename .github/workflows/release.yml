@@ -267,7 +267,7 @@ jobs:
   # macOS: bundle .app dentro de um DMG
   # ---------------------------------------------------------------------
   macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
 
