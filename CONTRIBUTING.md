@@ -33,3 +33,9 @@ python -m pytest tests/ -q
 
 [SemVer](https://semver.org/lang/pt-BR/): `fix` → patch, `feat` → minor, mudança incompatível → major.
 Versões e `CHANGELOG.md` são gerados a partir dos commits; não edite a versão à mão.
+
+## Como sai uma versão (mantenedor)
+
+1. Cada merge na `main` atualiza o PR **"chore(main): release X.Y.Z"**, aberto pelo release-please.
+2. Para publicar, faça o merge desse PR. Como ele é criado com o token do Actions, a CI de testes não roda nele; integre com `gh pr merge <n> --squash --admin`.
+3. O merge cria a tag e dispara `release.yml`, que compila os instaladores, gera o `SHA256SUMS.txt` e publica a Release.

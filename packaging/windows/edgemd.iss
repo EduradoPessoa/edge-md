@@ -18,7 +18,9 @@
 ; Programas, contrariando o resto do projeto.
 
 #define AppName "EdgeMD"
+; x-release-please-start-version
 #define AppVersion "0.1.0"
+; x-release-please-end
 #define AppPublisher "Eduardo Maurício Pessoa de Souza"
 #define AppURL "https://github.com/EduradoPessoa/edge-md"
 #define AppExeName "edgemd.exe"
