@@ -1,0 +1,21 @@
+# Fonte dos rótulos. Aplicar: python tools/sync_labels.py
+- {name: bug, color: d73a4a, description: "Algo não funciona"}
+- {name: enhancement, color: a2eeef, description: "Recurso novo ou melhoria"}
+- {name: triagem, color: fbca04, description: "Aguardando análise"}
+- {name: confirmado, color: 0e8a16, description: "Reproduzido pelo mantenedor"}
+- {name: não reproduzido, color: e4e669, description: "Faltam informações"}
+- {name: em andamento, color: 1d76db, description: "Sendo trabalhado"}
+- {name: bloqueado, color: b60205, description: "Depende de algo externo"}
+- {name: windows, color: 5319e7, description: "Específico do Windows"}
+- {name: linux, color: 5319e7, description: "Específico do Linux"}
+- {name: macos, color: 5319e7, description: "Específico do macOS"}
+- {name: instalador, color: c5def5, description: "Instalação, atualização, rollback"}
+- {name: dependencies, color: 0366d6, description: "Atualização de dependências"}
+- {name: documentation, color: 0075ca, description: "Documentação"}
+- {name: accessibility, color: f143ab, description: "Acessibilidade"}
+- {name: good first issue, color: 7057ff, description: "Bom para começar"}
+- {name: help wanted, color: 008672, description: "Ajuda bem-vinda"}
+- {name: question, color: d876e3, description: "Pergunta"}
+- {name: duplicate, color: cfd3d7, description: "Já existe"}
+- {name: invalid, color: e4e669, description: "Não procede"}
+- {name: wontfix, color: ffffff, description: "Não será feito"}

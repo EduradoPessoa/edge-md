@@ -1,0 +1,28 @@
+name: Sugerir uma melhoria
+description: Ideia de recurso ou ajuste no EdgeMD
+labels: ["enhancement", "triagem"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Que problema isso resolve?
+      description: Descreva a situação de uso, não a solução.
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como você imagina a solução
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options: ["Leitura / preview", "Edição", "Exportação", "Instalação / atualização", "Interface / acessibilidade", "Outra"]
+    validations:
+      required: true

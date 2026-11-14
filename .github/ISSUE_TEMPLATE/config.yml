@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Dúvidas e ideias em aberto
+    url: https://github.com/EduradoPessoa/edge-md/discussions
+    about: Para perguntas de uso e conversas que ainda não são um bug nem um pedido concreto.
+  - name: Vulnerabilidade de segurança
+    url: https://github.com/EduradoPessoa/edge-md/security/advisories/new
+    about: Não abra issue pública para falhas de segurança. Use o relato privado.
